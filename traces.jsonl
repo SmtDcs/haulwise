@@ -1,0 +1,3 @@
+{"type":"event","event":{"event":{"kind":"rpc","id":"b09111a2-1","timestamp":1791902841334,"method":"eth_accounts","params":[],"chainId":0,"error":"Unexpected error","duration":5},"enrichmentStatus":"none"}}
+{"type":"event","event":{"event":{"kind":"rpc","id":"b09111a2-2","timestamp":1791902841440,"method":"eth_accounts","params":[],"chainId":0,"error":"Unexpected error","duration":5},"enrichmentStatus":"none"}}
+{"type":"event","event":{"event":{"kind":"rpc","id":"b09111a2-3","timestamp":1791902841445,"method":"eth_accounts","params":[],"chainId":0,"result":[],"duration":3},"enrichmentStatus":"none"}}
