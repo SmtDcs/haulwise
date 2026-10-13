@@ -6,6 +6,7 @@ export enum ShipmentStatus {
   Disputed = 4,
   Cancelled = 5,
   Resolved = 6,
+  Refunded = 7,
 }
 
 export const STATUS_LABEL: Record<ShipmentStatus, string> = {
@@ -16,6 +17,7 @@ export const STATUS_LABEL: Record<ShipmentStatus, string> = {
   [ShipmentStatus.Disputed]: 'Disputed',
   [ShipmentStatus.Cancelled]: 'Cancelled',
   [ShipmentStatus.Resolved]: 'Resolved',
+  [ShipmentStatus.Refunded]: 'Refunded',
 };
 
 export interface Shipment {
@@ -23,12 +25,14 @@ export interface Shipment {
   shipper: `0x${string}`;
   carrier: `0x${string}`;
   amount: bigint;
-  deadline: bigint;
+  pickupDeadline: bigint;
+  deliveryDeadline: bigint;
   metadataURI: string;
   status: ShipmentStatus;
   pickedUpAt: bigint;
   deliveredAt: bigint;
   disputeReason: string;
+  disputedAt: bigint;
 }
 
 export interface Reputation {

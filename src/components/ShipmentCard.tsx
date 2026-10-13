@@ -1,5 +1,14 @@
 import { Shipment, ShipmentStatus } from '../types/cargo';
-import { formatAddress, formatUSDC, formatCountdown, isOverdue, isAutoReleaseReady } from '../lib/utils';
+import {
+  formatAddress,
+  formatUSDC,
+  formatCountdown,
+  isPickupOverdue,
+  isDeliveryOverdue,
+  isAutoReleaseReady,
+  canRefundUndelivered,
+  canEscalateDispute,
+} from '../lib/utils';
 import StatusBadge from './StatusBadge';
 import { ChevronRight, Clock, AlertCircle } from 'lucide-react';
 
@@ -10,8 +19,11 @@ interface ShipmentCardProps {
 }
 
 export default function ShipmentCard({ shipment, viewerAddress, onClick }: ShipmentCardProps) {
-  const overdue = isOverdue(shipment.deadline) && shipment.status === ShipmentStatus.Created;
+  const pickupOverdue = isPickupOverdue(shipment.pickupDeadline) && shipment.status === ShipmentStatus.Created;
+  const deliveryOverdue = isDeliveryOverdue(shipment.deliveryDeadline) && shipment.status === ShipmentStatus.PickedUp;
+  const refundReady = shipment.status === ShipmentStatus.PickedUp && canRefundUndelivered(shipment.deliveryDeadline);
   const autoRelReady = shipment.status === ShipmentStatus.Delivered && isAutoReleaseReady(shipment.deliveredAt);
+  const escalateReady = shipment.status === ShipmentStatus.Disputed && canEscalateDispute(shipment.disputedAt);
   const isShipper = viewerAddress?.toLowerCase() === shipment.shipper.toLowerCase();
 
   return (
@@ -21,12 +33,27 @@ export default function ShipmentCard({ shipment, viewerAddress, onClick }: Shipm
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="display text-sm font-600 text-[var(--accent)]">#{Number(shipment.id)}</span>
             <StatusBadge status={shipment.status} size="sm" />
-            {overdue && (
+            {pickupOverdue && (
               <span className="flex items-center gap-1 text-xs text-[var(--danger)]">
-                <AlertCircle size={11} /> Overdue
+                <AlertCircle size={11} /> Pickup overdue
+              </span>
+            )}
+            {refundReady && (
+              <span className="flex items-center gap-1 text-xs text-[var(--danger)] font-600">
+                <AlertCircle size={11} /> Refund available
+              </span>
+            )}
+            {!refundReady && deliveryOverdue && (
+              <span className="flex items-center gap-1 text-xs text-[var(--warning)]">
+                <AlertCircle size={11} /> Delivery overdue
+              </span>
+            )}
+            {escalateReady && (
+              <span className="flex items-center gap-1 text-xs text-[var(--warning)] font-600">
+                <Clock size={11} /> Escalation ready
               </span>
             )}
             {autoRelReady && (
@@ -41,10 +68,16 @@ export default function ShipmentCard({ shipment, viewerAddress, onClick }: Shipm
             <span className="tabular-nums font-600 text-[var(--ink-2)] text-sm">${formatUSDC(shipment.amount)} USDC</span>
           </div>
 
-          {shipment.status === ShipmentStatus.Created && !overdue && (
+          {shipment.status === ShipmentStatus.Created && (
             <div className="flex items-center gap-1 mt-1.5 text-xs text-[var(--subtle)]">
               <Clock size={11} />
-              <span className="tabular-nums">{formatCountdown(shipment.deadline)}</span>
+              <span>Pickup: <span className="tabular-nums">{pickupOverdue ? 'Overdue (cancellable)' : formatCountdown(shipment.pickupDeadline)}</span></span>
+            </div>
+          )}
+          {shipment.status === ShipmentStatus.PickedUp && (
+            <div className="flex items-center gap-1 mt-1.5 text-xs text-[var(--subtle)]">
+              <Clock size={11} />
+              <span>Delivery: <span className="tabular-nums">{deliveryOverdue ? 'Past deadline' : formatCountdown(shipment.deliveryDeadline)}</span></span>
             </div>
           )}
           {shipment.status === ShipmentStatus.Delivered && (

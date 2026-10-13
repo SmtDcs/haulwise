@@ -8,21 +8,6 @@ import {MockERC20} from "../test-helpers/MockERC20.sol";
 /**
  * @title CargoBillTest
  * @notice Comprehensive Foundry test suite for CargoBill.sol.
- *
- * Layout
- * ──────
- * Section 1  – Deployment / constructor
- * Section 2  – createShipment (happy + revert)
- * Section 3  – markPickedUp  (happy + revert)
- * Section 4  – markDelivered (happy + revert)
- * Section 5  – confirmDelivery (happy + revert + late-rep + events)
- * Section 6  – autoRelease (happy + revert + late-rep + 48-h window)
- * Section 7  – openDispute (happy + revert)
- * Section 8  – resolveDispute (happy + revert + split math)
- * Section 9  – cancel (happy + revert + late-rep)
- * Section 10 – changeArbiter (happy + revert)
- * Section 11 – Fuzz: fee arithmetic
- * Section 12 – Invariant: contract balance == sum of all Created/PickedUp/Delivered/Disputed amounts
  */
 contract CargoBillTest is Test {
 
@@ -44,10 +29,13 @@ contract CargoBillTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
     // Constants that mirror the contract
     // ─────────────────────────────────────────────────────────────────────────
-    uint256 internal constant FEE_BPS           = 50;
+    uint256 internal constant FEE_BPS            = 50;
     uint256 internal constant AUTO_RELEASE_DELAY = 48 hours;
-    uint256 internal constant AMOUNT            = 1_000e6;   // 1 000 USDC (6 dec)
-    uint256 internal constant DEADLINE_OFFSET   = 7 days;
+    uint256 internal constant AMOUNT             = 1_000e6; // 1 000 USDC (6 dec)
+    uint256 internal constant PICKUP_OFFSET      = 2 days;
+    uint256 internal constant DELIVERY_OFFSET    = 7 days;
+    uint256 internal constant REFUND_DELAY       = 7 days;
+    uint256 internal constant ESCALATE_DELAY     = 14 days;
 
     // ─────────────────────────────────────────────────────────────────────────
     // setUp – runs before EVERY test
@@ -69,7 +57,13 @@ contract CargoBillTest is Test {
     /// @dev Creates one standard shipment and returns its id.
     function _createShipment() internal returns (uint256 id) {
         vm.prank(shipper);
-        id = bill.createShipment(carrier, AMOUNT, block.timestamp + DEADLINE_OFFSET, "ipfs://meta");
+        id = bill.createShipment(
+            carrier,
+            AMOUNT,
+            block.timestamp + PICKUP_OFFSET,
+            block.timestamp + DELIVERY_OFFSET,
+            "ipfs://meta"
+        );
     }
 
     /// @dev Advances a shipment to PickedUp.
@@ -98,6 +92,7 @@ contract CargoBillTest is Test {
         assertEq(bill.usdc(),         address(usdc));
         assertEq(bill.feeRecipient(), feeRecip);
         assertEq(bill.arbiter(),      arbiter);
+        assertEq(bill.pendingArbiter(), address(0));
         assertEq(bill.shipmentCount(), 0);
     }
 
@@ -121,83 +116,145 @@ contract CargoBillTest is Test {
     // ═════════════════════════════════════════════════════════════════════════
 
     function test_CreateShipment_HappyPath() public {
-        uint256 deadline = block.timestamp + DEADLINE_OFFSET;
+        uint256 pickupDeadline = block.timestamp + PICKUP_OFFSET;
+        uint256 deliveryDeadline = block.timestamp + DELIVERY_OFFSET;
 
         vm.prank(shipper);
-        uint256 id = bill.createShipment(carrier, AMOUNT, deadline, "ipfs://meta");
+        uint256 id = bill.createShipment(carrier, AMOUNT, pickupDeadline, deliveryDeadline, "ipfs://meta");
 
         assertEq(id, 1, "id should be 1");
         assertEq(bill.shipmentCount(), 1, "shipmentCount should increment");
 
-        (
-            uint256 sId,
-            address sShipper,
-            address sCarrier,
-            uint256 sAmount,
-            uint256 sDeadline,
-            string memory sUri,
-            CargoBill.ShipmentStatus sStatus,
-            uint256 sPickedUpAt,
-            uint256 sDeliveredAt,
-            string memory sReason
-        ) = bill.shipments(1);
+        {
+            (
+                uint256 sId,
+                address sShipper,
+                address sCarrier,
+                uint256 sAmount,
+                uint256 sPickupDeadline,
+                uint256 sDeliveryDeadline,
+                ,
+                ,
+                ,
+                ,
+                ,
+            ) = bill.shipments(1);
 
-        assertEq(sId,        1,               "stored id");
-        assertEq(sShipper,   shipper,         "stored shipper");
-        assertEq(sCarrier,   carrier,         "stored carrier");
-        assertEq(sAmount,    AMOUNT,          "stored amount");
-        assertEq(sDeadline,  deadline,        "stored deadline");
-        assertEq(sUri,       "ipfs://meta",   "stored uri");
-        assertEq(uint8(sStatus), uint8(CargoBill.ShipmentStatus.Created), "status Created");
-        assertEq(sPickedUpAt,  0, "pickedUpAt zero");
-        assertEq(sDeliveredAt, 0, "deliveredAt zero");
-        assertEq(sReason, "", "no dispute reason");
+            assertEq(sId,               1,                "stored id");
+            assertEq(sShipper,          shipper,          "stored shipper");
+            assertEq(sCarrier,          carrier,          "stored carrier");
+            assertEq(sAmount,           AMOUNT,           "stored amount");
+            assertEq(sPickupDeadline,   pickupDeadline,   "stored pickupDeadline");
+            assertEq(sDeliveryDeadline, deliveryDeadline, "stored deliveryDeadline");
+        }
 
-        // USDC transferred from shipper to contract
+        {
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                string memory sUri,
+                CargoBill.ShipmentStatus sStatus,
+                uint256 sPickedUpAt,
+                uint256 sDeliveredAt,
+                string memory sReason,
+                uint256 sDisputedAt
+            ) = bill.shipments(1);
+
+            assertEq(sUri,              "ipfs://meta",    "stored uri");
+            assertEq(uint8(sStatus),    uint8(CargoBill.ShipmentStatus.Created), "status Created");
+            assertEq(sPickedUpAt,       0, "pickedUpAt zero");
+            assertEq(sDeliveredAt,      0, "deliveredAt zero");
+            assertEq(sReason,           "", "no dispute reason");
+            assertEq(sDisputedAt,       0, "disputedAt zero");
+        }
+
         assertEq(usdc.balanceOf(address(bill)), AMOUNT, "contract holds AMOUNT");
     }
 
     function test_CreateShipment_EmitsShipmentCreated() public {
-        uint256 deadline = block.timestamp + DEADLINE_OFFSET;
+        uint256 pickupDeadline = block.timestamp + PICKUP_OFFSET;
+        uint256 deliveryDeadline = block.timestamp + DELIVERY_OFFSET;
 
         vm.prank(shipper);
         vm.expectEmit(true, true, true, true, address(bill));
-        emit CargoBill.ShipmentCreated(1, shipper, carrier, AMOUNT, deadline, "ipfs://meta");
-        bill.createShipment(carrier, AMOUNT, deadline, "ipfs://meta");
+        emit CargoBill.ShipmentCreated(1, shipper, carrier, AMOUNT, pickupDeadline, deliveryDeadline, "ipfs://meta");
+        bill.createShipment(carrier, AMOUNT, pickupDeadline, deliveryDeadline, "ipfs://meta");
     }
 
     function test_CreateShipment_RevertsZeroCarrier() public {
         vm.prank(shipper);
         vm.expectRevert(bytes("CargoBill: zero carrier"));
-        bill.createShipment(address(0), AMOUNT, block.timestamp + 1, "x");
+        bill.createShipment(address(0), AMOUNT, block.timestamp + 1, block.timestamp + 2, "x");
+    }
+
+    function test_CreateShipment_RevertsCarrierIsSender() public {
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: carrier cannot be shipper"));
+        bill.createShipment(shipper, AMOUNT, block.timestamp + 1, block.timestamp + 2, "x");
     }
 
     function test_CreateShipment_RevertsZeroAmount() public {
         vm.prank(shipper);
         vm.expectRevert(bytes("CargoBill: zero amount"));
-        bill.createShipment(carrier, 0, block.timestamp + 1, "x");
+        bill.createShipment(carrier, 0, block.timestamp + 1, block.timestamp + 2, "x");
     }
 
-    function test_CreateShipment_RevertsBadDeadline_Equal() public {
-        // deadline == block.timestamp (not strictly greater)
+    function test_CreateShipment_RevertsBadPickupDeadline_Equal() public {
         vm.prank(shipper);
-        vm.expectRevert(bytes("CargoBill: bad deadline"));
-        bill.createShipment(carrier, AMOUNT, block.timestamp, "x");
+        vm.expectRevert(bytes("CargoBill: bad pickup deadline"));
+        bill.createShipment(carrier, AMOUNT, block.timestamp, block.timestamp + 1, "x");
     }
 
-    function test_CreateShipment_RevertsBadDeadline_Past() public {
+    function test_CreateShipment_RevertsBadPickupDeadline_Past() public {
         vm.warp(block.timestamp + 1 days);
         vm.prank(shipper);
-        vm.expectRevert(bytes("CargoBill: bad deadline"));
-        bill.createShipment(carrier, AMOUNT, block.timestamp - 1, "x");
+        vm.expectRevert(bytes("CargoBill: bad pickup deadline"));
+        bill.createShipment(carrier, AMOUNT, block.timestamp - 1, block.timestamp + 1, "x");
+    }
+
+    function test_CreateShipment_RevertsBadDeliveryDeadline_EqualOrBeforePickup() public {
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: bad delivery deadline"));
+        bill.createShipment(carrier, AMOUNT, block.timestamp + 2, block.timestamp + 2, "x");
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: bad delivery deadline"));
+        bill.createShipment(carrier, AMOUNT, block.timestamp + 2, block.timestamp + 1, "x");
+    }
+
+    function test_CreateShipment_RevertsMetadataTooLong() public {
+        bytes memory longUri = new bytes(257);
+        for (uint256 i = 0; i < 257; i++) {
+            longUri[i] = "a";
+        }
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: metadataURI too long"));
+        bill.createShipment(carrier, AMOUNT, block.timestamp + 1, block.timestamp + 2, string(longUri));
+    }
+
+    function test_CreateShipment_AllowsMax256Metadata() public {
+        bytes memory maxUri = new bytes(256);
+        for (uint256 i = 0; i < 256; i++) {
+            maxUri[i] = "a";
+        }
+
+        vm.prank(shipper);
+        uint256 id = bill.createShipment(carrier, AMOUNT, block.timestamp + 1, block.timestamp + 2, string(maxUri));
+        assertEq(id, 1);
     }
 
     function test_CreateShipment_IncrementId() public {
-        uint256 d = block.timestamp + DEADLINE_OFFSET;
+        uint256 p = block.timestamp + PICKUP_OFFSET;
+        uint256 d = block.timestamp + DELIVERY_OFFSET;
         vm.startPrank(shipper);
-        uint256 id1 = bill.createShipment(carrier, AMOUNT, d, "a");
-        uint256 id2 = bill.createShipment(carrier, AMOUNT, d, "b");
-        uint256 id3 = bill.createShipment(carrier, AMOUNT, d, "c");
+        uint256 id1 = bill.createShipment(carrier, AMOUNT, p, d, "a");
+        uint256 id2 = bill.createShipment(carrier, AMOUNT, p, d, "b");
+        uint256 id3 = bill.createShipment(carrier, AMOUNT, p, d, "c");
         vm.stopPrank();
         assertEq(id1, 1);
         assertEq(id2, 2);
@@ -215,9 +272,21 @@ contract CargoBillTest is Test {
         vm.prank(carrier);
         bill.markPickedUp(id);
 
-        (, , , , , , CargoBill.ShipmentStatus status, uint256 pickedUpAt, ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, uint256 pickedUpAt, , ,) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.PickedUp), "status PickedUp");
         assertEq(pickedUpAt, block.timestamp, "pickedUpAt set");
+    }
+
+    function test_MarkPickedUp_AtPickupDeadline_Succeeds() public {
+        uint256 id = _createShipment();
+
+        // Warp exactly to pickupDeadline
+        vm.warp(block.timestamp + PICKUP_OFFSET);
+        vm.prank(carrier);
+        bill.markPickedUp(id);
+
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.PickedUp));
     }
 
     function test_MarkPickedUp_EmitsPickedUp() public {
@@ -244,14 +313,14 @@ contract CargoBillTest is Test {
         bill.markPickedUp(id);
     }
 
-    function test_MarkPickedUp_RevertsDeadlinePassed() public {
+    function test_MarkPickedUp_RevertsPickupDeadlinePassed() public {
         uint256 id = _createShipment();
 
-        // Warp past the deadline
-        vm.warp(block.timestamp + DEADLINE_OFFSET + 1);
+        // Warp past pickupDeadline
+        vm.warp(block.timestamp + PICKUP_OFFSET + 1);
 
         vm.prank(carrier);
-        vm.expectRevert(bytes("CargoBill: deadline passed"));
+        vm.expectRevert(bytes("CargoBill: pickup deadline passed"));
         bill.markPickedUp(id);
     }
 
@@ -266,7 +335,7 @@ contract CargoBillTest is Test {
         vm.prank(carrier);
         bill.markDelivered(id);
 
-        (, , , , , , CargoBill.ShipmentStatus status, , uint256 deliveredAt,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , uint256 deliveredAt, ,) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Delivered), "status Delivered");
         assertEq(deliveredAt, block.timestamp, "deliveredAt set");
     }
@@ -291,7 +360,6 @@ contract CargoBillTest is Test {
 
     function test_MarkDelivered_RevertsBadStatus_NotPickedUp() public {
         uint256 id = _createShipment();
-        // still Created — not PickedUp
         vm.prank(carrier);
         vm.expectRevert(bytes("CargoBill: bad status"));
         bill.markDelivered(id);
@@ -327,7 +395,7 @@ contract CargoBillTest is Test {
         vm.prank(shipper);
         bill.confirmDelivery(id);
 
-        (, , , , , , CargoBill.ShipmentStatus status, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Released));
     }
 
@@ -357,24 +425,24 @@ contract CargoBillTest is Test {
         assertEq(completed, 1, "completed incremented");
     }
 
-    function test_ConfirmDelivery_IncrementsReputation_Late_WhenDeliveredAfterDeadline() public {
+    function test_ConfirmDelivery_IncrementsReputation_Late_WhenDeliveredAfterDeliveryDeadline() public {
         uint256 id = _createShipment();
         _pickUp(id);
 
-        // Warp past the deadline before delivering
-        vm.warp(block.timestamp + DEADLINE_OFFSET + 1);
+        // Warp past the delivery deadline before delivering
+        vm.warp(block.timestamp + DELIVERY_OFFSET + 1);
         _deliver(id);
 
         vm.prank(shipper);
         bill.confirmDelivery(id);
 
         (, , uint256 late) = bill.reputation(carrier);
-        assertEq(late, 1, "late incremented when delivered after deadline");
+        assertEq(late, 1, "late incremented when delivered after delivery deadline");
     }
 
     function test_ConfirmDelivery_NoLateIncrement_WhenOnTime() public {
         uint256 id = _createShipment();
-        _pickUp(id); _deliver(id); // delivered well before deadline
+        _pickUp(id); _deliver(id);
 
         vm.prank(shipper);
         bill.confirmDelivery(id);
@@ -394,7 +462,7 @@ contract CargoBillTest is Test {
 
     function test_ConfirmDelivery_RevertsBadStatus_NotDelivered() public {
         uint256 id = _createShipment();
-        _pickUp(id); // PickedUp, not Delivered
+        _pickUp(id);
 
         vm.prank(shipper);
         vm.expectRevert(bytes("CargoBill: bad status"));
@@ -460,7 +528,7 @@ contract CargoBillTest is Test {
         vm.prank(stranger);
         bill.autoRelease(id);
 
-        (, , , , , , CargoBill.ShipmentStatus status, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Released));
     }
 
@@ -475,10 +543,10 @@ contract CargoBillTest is Test {
         assertEq(completed, 1);
     }
 
-    function test_AutoRelease_IncrementsReputation_Late_WhenDeliveredAfterDeadline() public {
+    function test_AutoRelease_IncrementsReputation_Late_WhenDeliveredAfterDeliveryDeadline() public {
         uint256 id = _createShipment();
         _pickUp(id);
-        vm.warp(block.timestamp + DEADLINE_OFFSET + 1); // past deadline
+        vm.warp(block.timestamp + DELIVERY_OFFSET + 1);
         _deliver(id);
         vm.warp(block.timestamp + AUTO_RELEASE_DELAY);
 
@@ -490,7 +558,7 @@ contract CargoBillTest is Test {
 
     function test_AutoRelease_NoLateIncrement_WhenOnTime() public {
         uint256 id = _createShipment();
-        _pickUp(id); _deliver(id); // on time
+        _pickUp(id); _deliver(id);
         vm.warp(block.timestamp + AUTO_RELEASE_DELAY);
 
         bill.autoRelease(id);
@@ -503,7 +571,6 @@ contract CargoBillTest is Test {
         uint256 id = _createShipment();
         _pickUp(id); _deliver(id);
 
-        // Exactly one second short of the required delay
         vm.warp(block.timestamp + AUTO_RELEASE_DELAY - 1);
 
         vm.expectRevert(bytes("CargoBill: delay not met"));
@@ -512,26 +579,101 @@ contract CargoBillTest is Test {
 
     function test_AutoRelease_RevertsBadStatus_NotDelivered() public {
         uint256 id = _createShipment();
-        _pickUp(id); // PickedUp, not Delivered
+        _pickUp(id);
 
         vm.expectRevert(bytes("CargoBill: bad status"));
         bill.autoRelease(id);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Section 7 – openDispute
+    // Section 7 – refundUndelivered
+    // ═════════════════════════════════════════════════════════════════════════
+
+    function test_RefundUndelivered_HappyPath() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        uint256 beforeBal = usdc.balanceOf(shipper);
+
+        // Warp past deliveryDeadline + 7 days
+        vm.warp(block.timestamp + DELIVERY_OFFSET + REFUND_DELAY + 1);
+
+        vm.prank(shipper);
+        vm.expectEmit(true, false, false, false, address(bill));
+        emit CargoBill.ShipmentRefunded(id);
+        bill.refundUndelivered(id);
+
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Refunded), "status Refunded");
+        assertEq(usdc.balanceOf(shipper) - beforeBal, AMOUNT, "shipper fully refunded");
+        assertEq(usdc.balanceOf(address(bill)), 0, "contract drained");
+
+        (, , uint256 late) = bill.reputation(carrier);
+        assertEq(late, 1, "carrier late count incremented");
+    }
+
+    function test_RefundUndelivered_RevertsNotShipper() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        vm.warp(block.timestamp + DELIVERY_OFFSET + REFUND_DELAY + 1);
+
+        vm.prank(carrier);
+        vm.expectRevert(bytes("CargoBill: not shipper"));
+        bill.refundUndelivered(id);
+    }
+
+    function test_RefundUndelivered_RevertsBadStatus_Created() public {
+        uint256 id = _createShipment();
+
+        vm.warp(block.timestamp + DELIVERY_OFFSET + REFUND_DELAY + 1);
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: bad status"));
+        bill.refundUndelivered(id);
+    }
+
+    function test_RefundUndelivered_RevertsBadStatus_Delivered() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+        _deliver(id);
+
+        vm.warp(block.timestamp + DELIVERY_OFFSET + REFUND_DELAY + 1);
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: bad status"));
+        bill.refundUndelivered(id);
+    }
+
+    function test_RefundUndelivered_RevertsBeforeGracePeriod() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        // Warp to exactly deliveryDeadline + 7 days (not strictly greater)
+        vm.warp(block.timestamp + DELIVERY_OFFSET + REFUND_DELAY);
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: delivery grace period not passed"));
+        bill.refundUndelivered(id);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Section 8 – openDispute
     // ═════════════════════════════════════════════════════════════════════════
 
     function test_OpenDispute_ByShipper_WhilePickedUp() public {
         uint256 id = _createShipment();
         _pickUp(id);
 
+        uint256 beforeTime = block.timestamp;
+
         vm.prank(shipper);
         bill.openDispute(id, "cargo missing");
 
-        (, , , , , , CargoBill.ShipmentStatus status, , , string memory reason) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , string memory reason, uint256 disputedAt) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Disputed), "status Disputed");
         assertEq(reason, "cargo missing", "reason stored");
+        assertEq(disputedAt, beforeTime, "disputedAt stored");
     }
 
     function test_OpenDispute_ByCarrier_WhileDelivered() public {
@@ -541,8 +683,9 @@ contract CargoBillTest is Test {
         vm.prank(carrier);
         bill.openDispute(id, "payment concern");
 
-        (, , , , , , CargoBill.ShipmentStatus status, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , , uint256 disputedAt) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Disputed));
+        assertEq(disputedAt, block.timestamp);
     }
 
     function test_OpenDispute_EmitsDisputeOpened() public {
@@ -584,11 +727,70 @@ contract CargoBillTest is Test {
         bill.openDispute(id, "too late");
     }
 
+    function test_OpenDispute_RevertsReasonTooLong() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        bytes memory longReason = new bytes(257);
+        for (uint256 i = 0; i < 257; i++) {
+            longReason[i] = "e";
+        }
+
+        vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: dispute reason too long"));
+        bill.openDispute(id, string(longReason));
+    }
+
+    function test_OpenDispute_AllowsMax256Reason() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        bytes memory maxReason = new bytes(256);
+        for (uint256 i = 0; i < 256; i++) {
+            maxReason[i] = "e";
+        }
+
+        vm.prank(shipper);
+        bill.openDispute(id, string(maxReason));
+        (, , , , , , , CargoBill.ShipmentStatus status, , , string memory storedReason,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Disputed));
+        assertEq(storedReason, string(maxReason));
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
-    // Section 8 – resolveDispute
+    // Section 9 – resolveDispute & escalateTimeout
     // ═════════════════════════════════════════════════════════════════════════
 
-    function test_ResolveDispute_HappyPath_FullCarrier() public {
+    function test_ResolveDispute_CarrierLost_IncrementsCarrierDisputed() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+        _openDispute(id);
+
+        // carrierBps = 4999 (< 5000) -> carrier lost
+        vm.prank(arbiter);
+        bill.resolveDispute(id, 4_999);
+
+        (, uint256 carrierDisputed, ) = bill.reputation(carrier);
+        assertEq(carrierDisputed, 1, "carrier disputed incremented");
+        assertEq(bill.shipperDisputesLost(shipper), 0, "shipper disputes lost 0");
+    }
+
+    function test_ResolveDispute_ShipperLost_IncrementsShipperLost() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+        _openDispute(id);
+
+        // carrierBps = 5000 (>= 5000) -> shipper lost
+        vm.prank(arbiter);
+        bill.resolveDispute(id, 5_000);
+
+        (, uint256 carrierDisputed, ) = bill.reputation(carrier);
+        assertEq(carrierDisputed, 0, "carrier disputed not incremented");
+        assertEq(bill.shipperDisputesLost(shipper), 1, "shipper disputes lost incremented");
+        assertEq(bill.getShipperDisputesLost(shipper), 1, "getter exposes count");
+    }
+
+    function test_ResolveDispute_ShipperLost_FullCarrier() public {
         uint256 id = _createShipment();
         _pickUp(id);
         _openDispute(id);
@@ -601,9 +803,10 @@ contract CargoBillTest is Test {
 
         assertEq(usdc.balanceOf(carrier)  - carrierBefore,  AMOUNT, "carrier gets all");
         assertEq(usdc.balanceOf(shipper)  - shipperBefore,  0,      "shipper gets nothing");
+        assertEq(bill.shipperDisputesLost(shipper), 1, "shipper lost");
     }
 
-    function test_ResolveDispute_HappyPath_FullShipper() public {
+    function test_ResolveDispute_CarrierLost_FullShipper() public {
         uint256 id = _createShipment();
         _pickUp(id);
         _openDispute(id);
@@ -616,22 +819,10 @@ contract CargoBillTest is Test {
 
         assertEq(usdc.balanceOf(shipper) - shipperBefore, AMOUNT, "shipper gets all");
         assertEq(usdc.balanceOf(carrier) - carrierBefore, 0,      "carrier gets nothing");
-    }
 
-    function test_ResolveDispute_HappyPath_FiftFifty() public {
-        uint256 id = _createShipment();
-        _pickUp(id);
-        _openDispute(id);
-
-        uint256 carrierBefore = usdc.balanceOf(carrier);
-        uint256 shipperBefore = usdc.balanceOf(shipper);
-
-        vm.prank(arbiter);
-        bill.resolveDispute(id, 5_000); // 50/50
-
-        uint256 half = (AMOUNT * 5_000) / 10_000;
-        assertEq(usdc.balanceOf(carrier) - carrierBefore, half,          "carrier half");
-        assertEq(usdc.balanceOf(shipper) - shipperBefore, AMOUNT - half, "shipper half");
+        (, uint256 carrierDisputed, ) = bill.reputation(carrier);
+        assertEq(carrierDisputed, 1, "carrier lost");
+        assertEq(bill.shipperDisputesLost(shipper), 0);
     }
 
     function test_ResolveDispute_StatusBecomesResolved() public {
@@ -642,20 +833,8 @@ contract CargoBillTest is Test {
         vm.prank(arbiter);
         bill.resolveDispute(id, 5_000);
 
-        (, , , , , , CargoBill.ShipmentStatus status, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
         assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Resolved));
-    }
-
-    function test_ResolveDispute_IncrementsCarrierDisputedReputation() public {
-        uint256 id = _createShipment();
-        _pickUp(id);
-        _openDispute(id);
-
-        vm.prank(arbiter);
-        bill.resolveDispute(id, 5_000);
-
-        (, uint256 disputed, ) = bill.reputation(carrier);
-        assertEq(disputed, 1, "disputed incremented");
     }
 
     function test_ResolveDispute_EmitsDisputeResolved() public {
@@ -695,88 +874,118 @@ contract CargoBillTest is Test {
 
     function test_ResolveDispute_RevertsBadStatus_NotDisputed() public {
         uint256 id = _createShipment();
-        _pickUp(id); // PickedUp, not Disputed
+        _pickUp(id);
 
         vm.prank(arbiter);
         vm.expectRevert(bytes("CargoBill: bad status"));
         bill.resolveDispute(id, 5_000);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Section 9 – cancel
-    // ═════════════════════════════════════════════════════════════════════════
-
-    function test_Cancel_HappyPath_RefundsShipper() public {
+    function test_EscalateTimeout_HappyPath() public {
         uint256 id = _createShipment();
+        _pickUp(id);
+        _openDispute(id);
 
-        uint256 before = usdc.balanceOf(shipper);
+        // Warp 14 days after dispute opened
+        vm.warp(block.timestamp + ESCALATE_DELAY);
 
-        vm.prank(shipper);
-        bill.cancel(id);
+        uint256 carrierBefore = usdc.balanceOf(carrier);
+        uint256 shipperBefore = usdc.balanceOf(shipper);
 
-        assertEq(usdc.balanceOf(shipper) - before, AMOUNT, "shipper refunded");
+        // Anyone can call
+        vm.prank(stranger);
+        vm.expectEmit(true, false, false, true, address(bill));
+        emit CargoBill.DisputeResolved(id, 5000, AMOUNT / 2, AMOUNT - (AMOUNT / 2));
+        vm.expectEmit(true, false, false, true, address(bill));
+        emit CargoBill.DisputeTimeoutResolved(id, AMOUNT / 2, AMOUNT - (AMOUNT / 2));
+        bill.escalateTimeout(id);
+
+        assertEq(usdc.balanceOf(carrier) - carrierBefore, AMOUNT / 2, "carrier 50%");
+        assertEq(usdc.balanceOf(shipper) - shipperBefore, AMOUNT - (AMOUNT / 2), "shipper 50%");
         assertEq(usdc.balanceOf(address(bill)), 0, "contract drained");
+
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Resolved));
     }
 
-    function test_Cancel_StatusBecomesCancelled() public {
+    function test_EscalateTimeout_RevertsBeforeTimeout() public {
         uint256 id = _createShipment();
+        _pickUp(id);
+        _openDispute(id);
+
+        vm.warp(block.timestamp + ESCALATE_DELAY - 1);
+
+        vm.prank(stranger);
+        vm.expectRevert(bytes("CargoBill: dispute timeout not reached"));
+        bill.escalateTimeout(id);
+    }
+
+    function test_EscalateTimeout_RevertsBadStatus_NotDisputed() public {
+        uint256 id = _createShipment();
+        _pickUp(id);
+
+        vm.warp(block.timestamp + ESCALATE_DELAY);
+
+        vm.prank(stranger);
+        vm.expectRevert(bytes("CargoBill: bad status"));
+        bill.escalateTimeout(id);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Section 10 – cancel
+    // ═════════════════════════════════════════════════════════════════════════
+
+    function test_Cancel_RevertsBeforePickupDeadline() public {
+        uint256 id = _createShipment();
+
+        // Warp before pickupDeadline
+        vm.warp(block.timestamp + PICKUP_OFFSET - 1);
 
         vm.prank(shipper);
+        vm.expectRevert(bytes("CargoBill: pickup deadline not passed"));
         bill.cancel(id);
-
-        (, , , , , , CargoBill.ShipmentStatus status, , ,) = bill.shipments(id);
-        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Cancelled));
     }
 
-    function test_Cancel_EmitsShipmentCancelled() public {
+    function test_Cancel_HappyPath_AtOrAfterPickupDeadline() public {
         uint256 id = _createShipment();
+
+        // Warp to pickupDeadline
+        vm.warp(block.timestamp + PICKUP_OFFSET);
+
+        uint256 beforeBal = usdc.balanceOf(shipper);
 
         vm.prank(shipper);
         vm.expectEmit(true, false, false, false, address(bill));
         emit CargoBill.ShipmentCancelled(id);
         bill.cancel(id);
+
+        assertEq(usdc.balanceOf(shipper) - beforeBal, AMOUNT, "shipper refunded");
+        assertEq(usdc.balanceOf(address(bill)), 0, "contract drained");
+
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Cancelled));
+
+        // CRITICAL: verify carrier late reputation is NOT incremented
+        (, , uint256 late) = bill.reputation(carrier);
+        assertEq(late, 0, "no late increment on cancel");
     }
 
-    function test_Cancel_NoLateIncrement_BeforeDeadline() public {
+    function test_Cancel_PastPickupDeadline_NoCarrierLate() public {
         uint256 id = _createShipment();
-        // Cancel immediately — well before deadline
+
+        // Warp well past pickupDeadline
+        vm.warp(block.timestamp + PICKUP_OFFSET + 10 days);
 
         vm.prank(shipper);
         bill.cancel(id);
 
         (, , uint256 late) = bill.reputation(carrier);
-        assertEq(late, 0, "late NOT incremented before deadline");
-    }
-
-    function test_Cancel_IncrementsLate_WhenCancelledAtOrAfterDeadline() public {
-        uint256 id = _createShipment();
-
-        // Warp to exactly the deadline
-        (, , , , uint256 deadline, , , , ,) = bill.shipments(id);
-        vm.warp(deadline);
-
-        vm.prank(shipper);
-        bill.cancel(id);
-
-        (, , uint256 late) = bill.reputation(carrier);
-        assertEq(late, 1, "late incremented at deadline");
-    }
-
-    function test_Cancel_IncrementsLate_WhenCancelledPastDeadline() public {
-        uint256 id = _createShipment();
-
-        (, , , , uint256 deadline, , , , ,) = bill.shipments(id);
-        vm.warp(deadline + 1);
-
-        vm.prank(shipper);
-        bill.cancel(id);
-
-        (, , uint256 late) = bill.reputation(carrier);
-        assertEq(late, 1, "late incremented past deadline");
+        assertEq(late, 0, "carrier late count remains 0");
     }
 
     function test_Cancel_RevertsNotShipper() public {
         uint256 id = _createShipment();
+        vm.warp(block.timestamp + PICKUP_OFFSET);
 
         vm.prank(stranger);
         vm.expectRevert(bytes("CargoBill: not shipper"));
@@ -785,7 +994,9 @@ contract CargoBillTest is Test {
 
     function test_Cancel_RevertsBadStatus_NotCreated() public {
         uint256 id = _createShipment();
-        _pickUp(id); // now PickedUp
+        _pickUp(id);
+
+        vm.warp(block.timestamp + PICKUP_OFFSET + 1);
 
         vm.prank(shipper);
         vm.expectRevert(bytes("CargoBill: bad status"));
@@ -793,67 +1004,94 @@ contract CargoBillTest is Test {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Section 10 – changeArbiter
+    // Section 11 – Two-Step Arbiter Transfer
     // ═════════════════════════════════════════════════════════════════════════
 
     address internal newArbiter = makeAddr("newArbiter");
 
-    function test_ChangeArbiter_HappyPath() public {
-        vm.prank(arbiter);
-        bill.changeArbiter(newArbiter);
-
-        assertEq(bill.arbiter(), newArbiter, "arbiter updated");
-    }
-
-    function test_ChangeArbiter_EmitsArbiterChanged() public {
+    function test_TwoStepArbiterTransfer_HappyPath() public {
         vm.prank(arbiter);
         vm.expectEmit(true, true, false, false, address(bill));
+        emit CargoBill.ArbiterTransferStarted(arbiter, newArbiter);
+        bill.transferArbiter(newArbiter);
+
+        assertEq(bill.arbiter(), arbiter, "arbiter still old");
+        assertEq(bill.pendingArbiter(), newArbiter, "pendingArbiter set");
+
+        vm.prank(newArbiter);
+        vm.expectEmit(true, true, false, false, address(bill));
         emit CargoBill.ArbiterChanged(arbiter, newArbiter);
-        bill.changeArbiter(newArbiter);
+        bill.acceptArbiter();
+
+        assertEq(bill.arbiter(), newArbiter, "arbiter now new");
+        assertEq(bill.pendingArbiter(), address(0), "pendingArbiter reset");
     }
 
-    function test_ChangeArbiter_RevertsNotArbiter() public {
+    function test_TransferArbiter_RevertsNotArbiter() public {
         vm.prank(stranger);
         vm.expectRevert(bytes("CargoBill: not arbiter"));
-        bill.changeArbiter(newArbiter);
+        bill.transferArbiter(newArbiter);
     }
 
-    function test_ChangeArbiter_RevertsZeroAddress() public {
+    function test_TransferArbiter_RevertsZeroAddress() public {
         vm.prank(arbiter);
         vm.expectRevert(bytes("CargoBill: zero arbiter"));
-        bill.changeArbiter(address(0));
+        bill.transferArbiter(address(0));
     }
 
-    function test_ChangeArbiter_OldArbiterCanNoLongerAct() public {
+    function test_AcceptArbiter_RevertsNotPendingArbiter() public {
         vm.prank(arbiter);
-        bill.changeArbiter(newArbiter);
+        bill.transferArbiter(newArbiter);
 
-        // old arbiter tries to change again — should fail
+        vm.prank(stranger);
+        vm.expectRevert(bytes("CargoBill: not pending arbiter"));
+        bill.acceptArbiter();
+
+        vm.prank(arbiter);
+        vm.expectRevert(bytes("CargoBill: not pending arbiter"));
+        bill.acceptArbiter();
+    }
+
+    function test_OldArbiterCannotActAfterTransfer() public {
+        vm.prank(arbiter);
+        bill.transferArbiter(newArbiter);
+        vm.prank(newArbiter);
+        bill.acceptArbiter();
+
+        // Old arbiter cannot call transferArbiter
         vm.prank(arbiter);
         vm.expectRevert(bytes("CargoBill: not arbiter"));
-        bill.changeArbiter(arbiter);
+        bill.transferArbiter(stranger);
+
+        // Old arbiter cannot resolve disputes
+        uint256 id = _createShipment();
+        _pickUp(id);
+        _openDispute(id);
+
+        vm.prank(arbiter);
+        vm.expectRevert(bytes("CargoBill: not arbiter"));
+        bill.resolveDispute(id, 5000);
+
+        // New arbiter CAN resolve disputes
+        vm.prank(newArbiter);
+        bill.resolveDispute(id, 5000);
+        (, , , , , , , CargoBill.ShipmentStatus status, , , ,) = bill.shipments(id);
+        assertEq(uint8(status), uint8(CargoBill.ShipmentStatus.Resolved));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Section 11 – Fuzz: fee arithmetic (fee + net == amount for any amount > 0)
+    // Section 12 – Fuzz: fee arithmetic (fee + net == amount for any amount > 0)
     // ═════════════════════════════════════════════════════════════════════════
 
-    /**
-     * @dev For any amountUSDC in [1, 1e18], the fee and net computed by the
-     *      contract must sum exactly to amountUSDC (no dust, no over-payment).
-     *      We simulate the contract's own math and compare to what the contract
-     *      actually paid out after confirmDelivery.
-     */
     function testFuzz_FeeArithmetic_SumEqualsAmount(uint256 amount) public {
         amount = bound(amount, 1, 1e18);
 
-        // Fund shipper for this fuzz run
         usdc.mint(shipper, amount);
-        // shipper already has max-approve in setUp
 
-        uint256 deadline = block.timestamp + DEADLINE_OFFSET;
+        uint256 pickupDeadline = block.timestamp + PICKUP_OFFSET;
+        uint256 deliveryDeadline = block.timestamp + DELIVERY_OFFSET;
         vm.prank(shipper);
-        uint256 id = bill.createShipment(carrier, amount, deadline, "fuzz");
+        uint256 id = bill.createShipment(carrier, amount, pickupDeadline, deliveryDeadline, "fuzz");
 
         _pickUp(id);
         _deliver(id);
@@ -867,26 +1105,22 @@ contract CargoBillTest is Test {
         uint256 paidToCarrier = usdc.balanceOf(carrier)  - carrierBefore;
         uint256 paidToFee     = usdc.balanceOf(feeRecip) - feeRecipBefore;
 
-        // fee + net == amount (invariant: no USDC created or destroyed)
         assertEq(paidToCarrier + paidToFee, amount, "fee + net != amount");
 
-        // fee == floor(amount * 50 / 10_000)
         uint256 expectedFee = (amount * FEE_BPS) / 10_000;
         assertEq(paidToFee,     expectedFee,          "fee mismatch");
         assertEq(paidToCarrier, amount - expectedFee, "net mismatch");
     }
 
-    /**
-     * @dev Fuzz autoRelease's fee split with the same conservation law.
-     */
     function testFuzz_AutoRelease_FeeArithmetic(uint256 amount) public {
         amount = bound(amount, 1, 1e18);
 
         usdc.mint(shipper, amount);
 
-        uint256 deadline = block.timestamp + DEADLINE_OFFSET;
+        uint256 pickupDeadline = block.timestamp + PICKUP_OFFSET;
+        uint256 deliveryDeadline = block.timestamp + DELIVERY_OFFSET;
         vm.prank(shipper);
-        uint256 id = bill.createShipment(carrier, amount, deadline, "fuzz-auto");
+        uint256 id = bill.createShipment(carrier, amount, pickupDeadline, deliveryDeadline, "fuzz-auto");
 
         _pickUp(id);
         _deliver(id);
@@ -907,21 +1141,19 @@ contract CargoBillTest is Test {
         assertEq(paidToCarrier, amount - expectedFee, "net mismatch (autoRelease)");
     }
 
-    /**
-     * @dev Fuzz resolveDispute split: carrierAmount + shipperAmount == amount.
-     */
     function testFuzz_ResolveDispute_SplitSumsToAmount(uint256 amount, uint256 cBps) public {
         amount = bound(amount, 1, 1e18);
         cBps   = bound(cBps,   0, 10_000);
 
         usdc.mint(shipper, amount);
 
-        uint256 deadline = block.timestamp + DEADLINE_OFFSET;
+        uint256 pickupDeadline = block.timestamp + PICKUP_OFFSET;
+        uint256 deliveryDeadline = block.timestamp + DELIVERY_OFFSET;
         vm.prank(shipper);
-        uint256 id = bill.createShipment(carrier, amount, deadline, "fuzz-resolve");
+        uint256 id = bill.createShipment(carrier, amount, pickupDeadline, deliveryDeadline, "fuzz-resolve");
 
         _pickUp(id);
-        _openDispute(id); // calls openDispute from shipper
+        _openDispute(id);
 
         uint256 carrierBefore = usdc.balanceOf(carrier);
         uint256 shipperBefore = usdc.balanceOf(shipper);
@@ -937,9 +1169,7 @@ contract CargoBillTest is Test {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section 12 – Invariant: contract USDC balance == sum of escrowed shipments
-//
-// The handler drives state transitions; the invariant checks conservation.
+// Section 13 – Invariant: contract USDC balance == sum of escrowed shipments
 // ─────────────────────────────────────────────────────────────────────────────
 
 contract CargoBillHandler is Test {
@@ -951,7 +1181,7 @@ contract CargoBillHandler is Test {
     address internal arbiter;
     address internal feeRecip;
 
-    uint256[] internal openIds;  // ids that still hold escrowed funds
+    uint256[] internal openIds;
 
     constructor(CargoBill _bill, MockERC20 _usdc, address _arbiter, address _feeRecip) {
         bill     = _bill;
@@ -966,9 +1196,10 @@ contract CargoBillHandler is Test {
 
     function createShipment(uint256 amount) external {
         amount = bound(amount, 1, 10_000e6);
-        uint256 deadline = block.timestamp + 7 days;
+        uint256 pickupDeadline = block.timestamp + 2 days;
+        uint256 deliveryDeadline = block.timestamp + 7 days;
         vm.prank(shipper);
-        uint256 id = bill.createShipment(carrier, amount, deadline, "inv");
+        uint256 id = bill.createShipment(carrier, amount, pickupDeadline, deliveryDeadline, "inv");
         openIds.push(id);
     }
 
@@ -976,10 +1207,9 @@ contract CargoBillHandler is Test {
         if (openIds.length == 0) return;
         uint256 idx = seed % openIds.length;
         uint256 id  = openIds[idx];
-        (, , , , , , CargoBill.ShipmentStatus st, , ,) = bill.shipments(id);
+        (, , , , uint256 pickupDeadline, , , CargoBill.ShipmentStatus st, , , ,) = bill.shipments(id);
         if (st != CargoBill.ShipmentStatus.Created) return;
-        (, , , , uint256 deadline, , , , ,) = bill.shipments(id);
-        if (block.timestamp >= deadline) return;
+        if (block.timestamp > pickupDeadline) return;
         vm.prank(carrier);
         bill.markPickedUp(id);
     }
@@ -988,7 +1218,7 @@ contract CargoBillHandler is Test {
         if (openIds.length == 0) return;
         uint256 idx = seed % openIds.length;
         uint256 id  = openIds[idx];
-        (, , , , , , CargoBill.ShipmentStatus st, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus st, , , ,) = bill.shipments(id);
         if (st != CargoBill.ShipmentStatus.PickedUp) return;
         vm.prank(carrier);
         bill.markDelivered(id);
@@ -998,7 +1228,7 @@ contract CargoBillHandler is Test {
         if (openIds.length == 0) return;
         uint256 idx = seed % openIds.length;
         uint256 id  = openIds[idx];
-        (, , , , , , CargoBill.ShipmentStatus st, , ,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus st, , , ,) = bill.shipments(id);
         if (st != CargoBill.ShipmentStatus.Delivered) return;
         vm.prank(shipper);
         bill.confirmDelivery(id);
@@ -1009,7 +1239,7 @@ contract CargoBillHandler is Test {
         if (openIds.length == 0) return;
         uint256 idx = seed % openIds.length;
         uint256 id  = openIds[idx];
-        (, , , , , , CargoBill.ShipmentStatus st, , uint256 deliveredAt,) = bill.shipments(id);
+        (, , , , , , , CargoBill.ShipmentStatus st, , uint256 deliveredAt, ,) = bill.shipments(id);
         if (st != CargoBill.ShipmentStatus.Delivered) return;
         if (block.timestamp < deliveredAt + bill.AUTO_RELEASE_DELAY()) return;
         bill.autoRelease(id);
@@ -1020,8 +1250,9 @@ contract CargoBillHandler is Test {
         if (openIds.length == 0) return;
         uint256 idx = seed % openIds.length;
         uint256 id  = openIds[idx];
-        (, , , , , , CargoBill.ShipmentStatus st, , ,) = bill.shipments(id);
+        (, , , , uint256 pickupDeadline, , , CargoBill.ShipmentStatus st, , , ,) = bill.shipments(id);
         if (st != CargoBill.ShipmentStatus.Created) return;
+        if (block.timestamp < pickupDeadline) return;
         vm.prank(shipper);
         bill.cancel(id);
         _removeId(idx);
@@ -1032,10 +1263,9 @@ contract CargoBillHandler is Test {
         openIds.pop();
     }
 
-    /// @dev Returns the sum of amounts for all shipments still holding funds.
     function sumEscrowed() external view returns (uint256 total) {
         for (uint256 i = 0; i < openIds.length; i++) {
-            (, , , uint256 amount, , , , , ,) = bill.shipments(openIds[i]);
+            (, , , uint256 amount, , , , , , , ,) = bill.shipments(openIds[i]);
             total += amount;
         }
     }
@@ -1057,10 +1287,6 @@ contract CargoBillInvariantTest is Test {
         targetContract(address(handler));
     }
 
-    /**
-     * @dev The contract's USDC balance must always equal the sum of amounts
-     *      held in shipments that haven't yet been released/cancelled/resolved.
-     */
     function invariant_ContractBalanceEqualsEscrow() public view {
         assertEq(
             usdc.balanceOf(address(bill)),

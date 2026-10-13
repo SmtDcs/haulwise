@@ -39,12 +39,48 @@ export function formatAutoReleaseCountdown(deliveredAt: bigint): string {
   return `Auto-release in ${h}h ${m}m`;
 }
 
+export function formatRefundCountdown(deliveryDeadline: bigint): string {
+  const refundAt = Number(deliveryDeadline) + 7 * 86400;
+  const now = Math.floor(Date.now() / 1000);
+  const diff = refundAt - now;
+  if (diff <= 0) return 'Refund available now';
+  const d = Math.floor(diff / 86400);
+  const h = Math.floor((diff % 86400) / 3600);
+  return `Refund eligible in ${d}d ${h}h`;
+}
+
+export function formatEscalateCountdown(disputedAt: bigint): string {
+  const escalateAt = Number(disputedAt) + 14 * 86400;
+  const now = Math.floor(Date.now() / 1000);
+  const diff = escalateAt - now;
+  if (diff <= 0) return 'Escalation available now';
+  const d = Math.floor(diff / 86400);
+  const h = Math.floor((diff % 86400) / 3600);
+  return `Escalate in ${d}d ${h}h`;
+}
+
 export function isOverdue(deadline: bigint): boolean {
   return Number(deadline) < Math.floor(Date.now() / 1000);
 }
 
+export function isPickupOverdue(pickupDeadline: bigint): boolean {
+  return Number(pickupDeadline) < Math.floor(Date.now() / 1000);
+}
+
+export function isDeliveryOverdue(deliveryDeadline: bigint): boolean {
+  return Number(deliveryDeadline) < Math.floor(Date.now() / 1000);
+}
+
 export function isAutoReleaseReady(deliveredAt: bigint): boolean {
   return Date.now() / 1000 >= Number(deliveredAt) + 48 * 3600;
+}
+
+export function canRefundUndelivered(deliveryDeadline: bigint): boolean {
+  return Math.floor(Date.now() / 1000) > Number(deliveryDeadline) + 7 * 86400;
+}
+
+export function canEscalateDispute(disputedAt: bigint): boolean {
+  return disputedAt > 0n && Math.floor(Date.now() / 1000) >= Number(disputedAt) + 14 * 86400;
 }
 
 export function statusColor(status: ShipmentStatus): string {
@@ -56,6 +92,7 @@ export function statusColor(status: ShipmentStatus): string {
     case ShipmentStatus.Disputed: return 'text-[var(--danger)]';
     case ShipmentStatus.Cancelled: return 'text-[var(--subtle)]';
     case ShipmentStatus.Resolved: return 'text-[var(--success)]';
+    case ShipmentStatus.Refunded: return 'text-[var(--danger)]';
     default: return 'text-[var(--muted)]';
   }
 }
@@ -69,6 +106,7 @@ export function statusDot(status: ShipmentStatus): string {
     case ShipmentStatus.Disputed: return 'bg-[var(--danger)]';
     case ShipmentStatus.Cancelled: return 'bg-[var(--subtle)]';
     case ShipmentStatus.Resolved: return 'bg-[var(--success)]';
+    case ShipmentStatus.Refunded: return 'bg-[var(--danger)]';
     default: return 'bg-[var(--muted)]';
   }
 }

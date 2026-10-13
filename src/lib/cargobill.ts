@@ -18,7 +18,8 @@ export const CARGOBILL_ABI = [
     "inputs": [
       { "name": "carrier", "type": "address" },
       { "name": "amountUSDC", "type": "uint256" },
-      { "name": "deadline", "type": "uint256" },
+      { "name": "pickupDeadline", "type": "uint256" },
+      { "name": "deliveryDeadline", "type": "uint256" },
       { "name": "metadataURI", "type": "string" }
     ],
     "outputs": [{ "name": "id", "type": "uint256" }],
@@ -54,6 +55,13 @@ export const CARGOBILL_ABI = [
   },
   {
     "type": "function",
+    "name": "refundUndelivered",
+    "inputs": [{ "name": "id", "type": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "openDispute",
     "inputs": [
       { "name": "id", "type": "uint256" },
@@ -74,6 +82,13 @@ export const CARGOBILL_ABI = [
   },
   {
     "type": "function",
+    "name": "escalateTimeout",
+    "inputs": [{ "name": "id", "type": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cancel",
     "inputs": [{ "name": "id", "type": "uint256" }],
     "outputs": [],
@@ -81,8 +96,15 @@ export const CARGOBILL_ABI = [
   },
   {
     "type": "function",
-    "name": "changeArbiter",
+    "name": "transferArbiter",
     "inputs": [{ "name": "newArbiter", "type": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "acceptArbiter",
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -95,12 +117,14 @@ export const CARGOBILL_ABI = [
       { "name": "shipper", "type": "address" },
       { "name": "carrier", "type": "address" },
       { "name": "amount", "type": "uint256" },
-      { "name": "deadline", "type": "uint256" },
+      { "name": "pickupDeadline", "type": "uint256" },
+      { "name": "deliveryDeadline", "type": "uint256" },
       { "name": "metadataURI", "type": "string" },
       { "name": "status", "type": "uint8" },
       { "name": "pickedUpAt", "type": "uint256" },
       { "name": "deliveredAt", "type": "uint256" },
-      { "name": "disputeReason", "type": "string" }
+      { "name": "disputeReason", "type": "string" },
+      { "name": "disputedAt", "type": "uint256" }
     ],
     "stateMutability": "view"
   },
@@ -113,6 +137,20 @@ export const CARGOBILL_ABI = [
       { "name": "disputed", "type": "uint256" },
       { "name": "late", "type": "uint256" }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "shipperDisputesLost",
+    "inputs": [{ "name": "", "type": "address" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getShipperDisputesLost",
+    "inputs": [{ "name": "shipper", "type": "address" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view"
   },
   {
@@ -145,6 +183,13 @@ export const CARGOBILL_ABI = [
   },
   {
     "type": "function",
+    "name": "pendingArbiter",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "PROTOCOL_FEE_BPS",
     "inputs": [],
     "outputs": [{ "name": "", "type": "uint256" }],
@@ -165,7 +210,8 @@ export const CARGOBILL_ABI = [
       { "name": "shipper", "type": "address", "indexed": true },
       { "name": "carrier", "type": "address", "indexed": true },
       { "name": "amount", "type": "uint256", "indexed": false },
-      { "name": "deadline", "type": "uint256", "indexed": false },
+      { "name": "pickupDeadline", "type": "uint256", "indexed": false },
+      { "name": "deliveryDeadline", "type": "uint256", "indexed": false },
       { "name": "metadataURI", "type": "string", "indexed": false }
     ]
   },
@@ -229,8 +275,30 @@ export const CARGOBILL_ABI = [
   },
   {
     "type": "event",
+    "name": "DisputeTimeoutResolved",
+    "inputs": [
+      { "name": "id", "type": "uint256", "indexed": true },
+      { "name": "carrierAmount", "type": "uint256", "indexed": false },
+      { "name": "shipperAmount", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
     "name": "ShipmentCancelled",
     "inputs": [{ "name": "id", "type": "uint256", "indexed": true }]
+  },
+  {
+    "type": "event",
+    "name": "ShipmentRefunded",
+    "inputs": [{ "name": "id", "type": "uint256", "indexed": true }]
+  },
+  {
+    "type": "event",
+    "name": "ArbiterTransferStarted",
+    "inputs": [
+      { "name": "currentArbiter", "type": "address", "indexed": true },
+      { "name": "pendingArbiter", "type": "address", "indexed": true }
+    ]
   },
   {
     "type": "event",

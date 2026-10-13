@@ -3,19 +3,17 @@ import { useWriteContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { toast } from 'sonner';
 import { CARGOBILL_ABI, CARGOBILL_ADDRESS } from '../lib/cargobill';
-import { getUsdc } from '@/onchain-facts';
+import { CHAIN_ID, USDC_ADDRESS } from '../config';
 import { parseUSDC } from '../lib/utils';
 import { Zap } from 'lucide-react';
 
-const CHAIN_ID = 5042002;
-const usdcFact = getUsdc(CHAIN_ID);
-const USDC_ADDRESS = usdcFact?.address as `0x${string}`;
+// Demo carrier address (must be distinct from shipper per CargoBill contract rules)
+const DEMO_CARRIER: `0x${string}` = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 
-// Demo shipments to seed (carrier = own address so shipper can demonstrate all flows)
 const DEMO_SHIPMENTS = [
-  { amount: '100', deadlineHours: 72, meta: 'Electronics - Chicago to Dallas' },
-  { amount: '250', deadlineHours: 48, meta: 'Auto Parts - Detroit to Memphis' },
-  { amount: '50', deadlineHours: 168, meta: 'Books - Seattle to Portland' },
+  { amount: '100', pickupHours: 24, deliveryHours: 72, meta: 'Electronics - Chicago to Dallas' },
+  { amount: '250', pickupHours: 12, deliveryHours: 48, meta: 'Auto Parts - Detroit to Memphis' },
+  { amount: '50', pickupHours: 48, deliveryHours: 168, meta: 'Books - Seattle to Portland' },
 ];
 
 interface DemoSeederProps {
@@ -38,7 +36,9 @@ export default function DemoSeeder({ refetch, connectedAddress }: DemoSeederProp
       for (let i = 0; i < DEMO_SHIPMENTS.length; i++) {
         const demo = DEMO_SHIPMENTS[i];
         const amount = parseUSDC(demo.amount);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + demo.deadlineHours * 3600);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const pickupDeadline = BigInt(nowSec + demo.pickupHours * 3600);
+        const deliveryDeadline = BigInt(nowSec + demo.deliveryHours * 3600);
 
         setStep(`Approving USDC for shipment ${i + 1}/${DEMO_SHIPMENTS.length}...`);
         await writeContractAsync({
@@ -54,11 +54,13 @@ export default function DemoSeeder({ refetch, connectedAddress }: DemoSeederProp
           address: CARGOBILL_ADDRESS,
           abi: CARGOBILL_ABI,
           functionName: 'createShipment',
-          args: [connectedAddress, amount, deadline, demo.meta],
+          args: [DEMO_CARRIER, amount, pickupDeadline, deliveryDeadline, demo.meta],
           chainId: CHAIN_ID,
         });
       }
-      toast.success('Demo data seeded!', { description: `${DEMO_SHIPMENTS.length} shipments created with your address as both shipper and carrier.` });
+      toast.success('Demo data seeded!', {
+        description: `${DEMO_SHIPMENTS.length} shipments created with pickup and delivery deadlines.`,
+      });
       refetch();
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? '';
@@ -78,7 +80,7 @@ export default function DemoSeeder({ refetch, connectedAddress }: DemoSeederProp
             Seed Demo Data
           </div>
           <div className="text-xs text-[var(--subtle)] mt-0.5">
-            Creates 3 shipments with your wallet as shipper and carrier
+            Creates 3 shipments with configured pickup and delivery deadlines
           </div>
         </div>
         <button

@@ -1,0 +1,7 @@
+node_modules
+contracts/out
+contracts/cache
+*.jsonl
+dist
+.env
+.env.local

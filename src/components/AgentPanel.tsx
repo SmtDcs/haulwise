@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { Shipment, ShipmentStatus, AgentLog, Reputation } from '../types/cargo';
-import { formatUSDC, isOverdue, isAutoReleaseReady } from '../lib/utils';
+import {
+  formatUSDC,
+  isPickupOverdue,
+  isDeliveryOverdue,
+  canRefundUndelivered,
+  canEscalateDispute,
+  isAutoReleaseReady,
+} from '../lib/utils';
 import { Bot, AlertTriangle, Lightbulb, Activity, Trash2 } from 'lucide-react';
 
 interface AgentPanelProps {
@@ -23,33 +30,46 @@ function analyzeShipments(
 
   for (const s of shipments) {
     // Flag overdue created shipments
-    if (s.status === ShipmentStatus.Created && isOverdue(s.deadline)) {
+    if (s.status === ShipmentStatus.Created && isPickupOverdue(s.pickupDeadline)) {
       addLog({
         type: 'flag',
         shipmentId: Number(s.id),
-        message: `Shipment #${Number(s.id)} ($${formatUSDC(s.amount)} USDC) is past its deadline. Carrier has not picked up. Shipper can cancel and recover funds.`,
+        message: `Shipment #${Number(s.id)} ($${formatUSDC(s.amount)} USDC) is past its pickup deadline. Carrier has not picked up. Shipper can cancel and recover funds.`,
       });
     }
 
-    // Flag delivered but no confirmation for > 24h
-    if (s.status === ShipmentStatus.Delivered) {
-      const hoursDelivered = (now / 1000 - Number(s.deliveredAt)) / 3600;
-      if (hoursDelivered > 24) {
+    // Flag picked up but past delivery deadline or refund grace period
+    if (s.status === ShipmentStatus.PickedUp) {
+      if (canRefundUndelivered(s.deliveryDeadline)) {
         addLog({
           type: 'flag',
           shipmentId: Number(s.id),
-          message: `Shipment #${Number(s.id)} delivered ${Math.round(hoursDelivered)}h ago with no confirmation. ${isAutoReleaseReady(s.deliveredAt) ? 'Auto-release is now available.' : 'Auto-release window approaching.'}`,
+          message: `Shipment #${Number(s.id)} is 7+ days past delivery deadline. Shipper can claim a full refund via refundUndelivered.`,
+        });
+      } else if (isDeliveryOverdue(s.deliveryDeadline)) {
+        addLog({
+          type: 'suggestion',
+          shipmentId: Number(s.id),
+          message: `Shipment #${Number(s.id)} is past delivery deadline. Monitoring transit.`,
         });
       }
     }
 
-    // Flag disputed shipments
+    // Flag disputed shipments & 14-day escalation timeout
     if (s.status === ShipmentStatus.Disputed) {
-      addLog({
-        type: 'flag',
-        shipmentId: Number(s.id),
-        message: `Shipment #${Number(s.id)} is in dispute. Reason: "${s.disputeReason || 'not provided'}". Awaiting arbiter resolution.`,
-      });
+      if (canEscalateDispute(s.disputedAt)) {
+        addLog({
+          type: 'action',
+          shipmentId: Number(s.id),
+          message: `Shipment #${Number(s.id)} dispute unresolved for 14+ days. Anyone can trigger a 50/50 timeout escalation.`,
+        });
+      } else {
+        addLog({
+          type: 'flag',
+          shipmentId: Number(s.id),
+          message: `Shipment #${Number(s.id)} is in dispute. Reason: "${s.disputeReason || 'not provided'}". Awaiting arbiter resolution.`,
+        });
+      }
     }
 
     // Reputation risk

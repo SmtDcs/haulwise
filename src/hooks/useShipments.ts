@@ -2,19 +2,23 @@ import { useReadContract, useReadContracts } from 'wagmi';
 import { CARGOBILL_ABI, CARGOBILL_ADDRESS } from '../lib/cargobill';
 import { Shipment, Reputation, ShipmentStatus } from '../types/cargo';
 
-function parseShipment(raw: readonly [bigint, string, string, bigint, bigint, string, number, bigint, bigint, string] | undefined): Shipment | null {
+function parseShipment(
+  raw: readonly [bigint, string, string, bigint, bigint, bigint, string, number, bigint, bigint, string, bigint] | undefined
+): Shipment | null {
   if (!raw) return null;
   return {
     id: raw[0],
     shipper: raw[1] as `0x${string}`,
     carrier: raw[2] as `0x${string}`,
     amount: raw[3],
-    deadline: raw[4],
-    metadataURI: raw[5],
-    status: raw[6] as ShipmentStatus,
-    pickedUpAt: raw[7],
-    deliveredAt: raw[8],
-    disputeReason: raw[9],
+    pickupDeadline: raw[4],
+    deliveryDeadline: raw[5],
+    metadataURI: raw[6],
+    status: raw[7] as ShipmentStatus,
+    pickedUpAt: raw[8],
+    deliveredAt: raw[9],
+    disputeReason: raw[10],
+    disputedAt: raw[11],
   };
 }
 
@@ -37,7 +41,7 @@ export function useShipment(id: number) {
   });
   return {
     ...result,
-    shipment: parseShipment(result.data),
+    shipment: parseShipment(result.data as readonly [bigint, string, string, bigint, bigint, bigint, string, number, bigint, bigint, string, bigint] | undefined),
   };
 }
 
@@ -58,7 +62,7 @@ export function useAllShipments(count: number) {
   if (results.data) {
     for (const r of results.data) {
       if (r.status === 'success' && r.result) {
-        const s = parseShipment(r.result);
+        const s = parseShipment(r.result as readonly [bigint, string, string, bigint, bigint, bigint, string, number, bigint, bigint, string, bigint]);
         if (s) shipments.push(s);
       }
     }
@@ -82,4 +86,19 @@ export function useReputation(address: `0x${string}` | undefined) {
     : null;
 
   return { ...result, reputation };
+}
+
+export function useShipperDisputesLost(address: `0x${string}` | undefined) {
+  const result = useReadContract({
+    address: CARGOBILL_ADDRESS || undefined,
+    abi: CARGOBILL_ABI,
+    functionName: 'shipperDisputesLost',
+    args: address ? [address] : undefined,
+    query: { enabled: !!CARGOBILL_ADDRESS && !!address },
+  });
+
+  return {
+    ...result,
+    disputesLost: result.data ? BigInt(result.data) : 0n,
+  };
 }

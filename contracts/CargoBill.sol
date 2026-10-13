@@ -10,10 +10,13 @@ contract CargoBill is ReentrancyGuard {
 
     uint256 public constant PROTOCOL_FEE_BPS = 50;
     uint256 public constant AUTO_RELEASE_DELAY = 48 hours;
+    uint256 public constant REFUND_UNDELIVERED_DELAY = 7 days;
+    uint256 public constant ESCALATE_TIMEOUT_DELAY = 14 days;
 
     address public immutable usdc;
     address public immutable feeRecipient;
     address public arbiter;
+    address public pendingArbiter;
     uint256 public shipmentCount;
 
     enum ShipmentStatus {
@@ -23,7 +26,8 @@ contract CargoBill is ReentrancyGuard {
         Released,
         Disputed,
         Cancelled,
-        Resolved
+        Resolved,
+        Refunded
     }
 
     struct Shipment {
@@ -31,12 +35,14 @@ contract CargoBill is ReentrancyGuard {
         address shipper;
         address carrier;
         uint256 amount;
-        uint256 deadline;
+        uint256 pickupDeadline;
+        uint256 deliveryDeadline;
         string metadataURI;
         ShipmentStatus status;
         uint256 pickedUpAt;
         uint256 deliveredAt;
         string disputeReason;
+        uint256 disputedAt;
     }
 
     struct Reputation {
@@ -47,13 +53,15 @@ contract CargoBill is ReentrancyGuard {
 
     mapping(uint256 => Shipment) public shipments;
     mapping(address => Reputation) public reputation;
+    mapping(address => uint256) public shipperDisputesLost;
 
     event ShipmentCreated(
         uint256 indexed id,
         address indexed shipper,
         address indexed carrier,
         uint256 amount,
-        uint256 deadline,
+        uint256 pickupDeadline,
+        uint256 deliveryDeadline,
         string metadataURI
     );
     event PickedUp(uint256 indexed id, uint256 timestamp);
@@ -63,7 +71,10 @@ contract CargoBill is ReentrancyGuard {
     event AutoReleased(uint256 indexed id, address indexed caller);
     event DisputeOpened(uint256 indexed id, address indexed opener, string reason);
     event DisputeResolved(uint256 indexed id, uint256 carrierBps, uint256 carrierAmount, uint256 shipperAmount);
+    event DisputeTimeoutResolved(uint256 indexed id, uint256 carrierAmount, uint256 shipperAmount);
     event ShipmentCancelled(uint256 indexed id);
+    event ShipmentRefunded(uint256 indexed id);
+    event ArbiterTransferStarted(address indexed currentArbiter, address indexed pendingArbiter);
     event ArbiterChanged(address indexed oldArbiter, address indexed newArbiter);
 
     modifier onlyArbiter() {
@@ -84,12 +95,16 @@ contract CargoBill is ReentrancyGuard {
     function createShipment(
         address carrier,
         uint256 amountUSDC,
-        uint256 deadline,
+        uint256 pickupDeadline,
+        uint256 deliveryDeadline,
         string calldata metadataURI
     ) external nonReentrant returns (uint256 id) {
         require(carrier != address(0), "CargoBill: zero carrier");
+        require(carrier != msg.sender, "CargoBill: carrier cannot be shipper");
         require(amountUSDC > 0, "CargoBill: zero amount");
-        require(deadline > block.timestamp, "CargoBill: bad deadline");
+        require(pickupDeadline > block.timestamp, "CargoBill: bad pickup deadline");
+        require(deliveryDeadline > pickupDeadline, "CargoBill: bad delivery deadline");
+        require(bytes(metadataURI).length <= 256, "CargoBill: metadataURI too long");
 
         id = ++shipmentCount;
 
@@ -98,17 +113,27 @@ contract CargoBill is ReentrancyGuard {
             shipper: msg.sender,
             carrier: carrier,
             amount: amountUSDC,
-            deadline: deadline,
+            pickupDeadline: pickupDeadline,
+            deliveryDeadline: deliveryDeadline,
             metadataURI: metadataURI,
             status: ShipmentStatus.Created,
             pickedUpAt: 0,
             deliveredAt: 0,
-            disputeReason: ""
+            disputeReason: "",
+            disputedAt: 0
         });
 
         IERC20(usdc).safeTransferFrom(msg.sender, address(this), amountUSDC);
 
-        emit ShipmentCreated(id, msg.sender, carrier, amountUSDC, deadline, metadataURI);
+        emit ShipmentCreated(
+            id,
+            msg.sender,
+            carrier,
+            amountUSDC,
+            pickupDeadline,
+            deliveryDeadline,
+            metadataURI
+        );
     }
 
     function markPickedUp(uint256 id) external {
@@ -116,7 +141,7 @@ contract CargoBill is ReentrancyGuard {
 
         require(msg.sender == s.carrier, "CargoBill: not carrier");
         require(s.status == ShipmentStatus.Created, "CargoBill: bad status");
-        require(block.timestamp < s.deadline, "CargoBill: deadline passed");
+        require(block.timestamp <= s.pickupDeadline, "CargoBill: pickup deadline passed");
 
         s.status = ShipmentStatus.PickedUp;
         s.pickedUpAt = block.timestamp;
@@ -147,7 +172,7 @@ contract CargoBill is ReentrancyGuard {
 
         s.status = ShipmentStatus.Released;
         reputation[s.carrier].completed++;
-        if (s.deliveredAt > s.deadline) {
+        if (s.deliveredAt > s.deliveryDeadline) {
             reputation[s.carrier].late++;
         }
 
@@ -169,7 +194,7 @@ contract CargoBill is ReentrancyGuard {
 
         s.status = ShipmentStatus.Released;
         reputation[s.carrier].completed++;
-        if (s.deliveredAt > s.deadline) {
+        if (s.deliveredAt > s.deliveryDeadline) {
             reputation[s.carrier].late++;
         }
 
@@ -180,6 +205,24 @@ contract CargoBill is ReentrancyGuard {
         emit FundsReleased(id, s.carrier, net, fee);
     }
 
+    function refundUndelivered(uint256 id) external nonReentrant {
+        Shipment storage s = shipments[id];
+
+        require(msg.sender == s.shipper, "CargoBill: not shipper");
+        require(s.status == ShipmentStatus.PickedUp, "CargoBill: bad status");
+        require(
+            block.timestamp > s.deliveryDeadline + REFUND_UNDELIVERED_DELAY,
+            "CargoBill: delivery grace period not passed"
+        );
+
+        s.status = ShipmentStatus.Refunded;
+        reputation[s.carrier].late++;
+
+        IERC20(usdc).safeTransfer(s.shipper, s.amount);
+
+        emit ShipmentRefunded(id);
+    }
+
     function openDispute(uint256 id, string calldata reason) external {
         Shipment storage s = shipments[id];
 
@@ -188,9 +231,11 @@ contract CargoBill is ReentrancyGuard {
             s.status == ShipmentStatus.PickedUp || s.status == ShipmentStatus.Delivered,
             "CargoBill: bad status"
         );
+        require(bytes(reason).length <= 256, "CargoBill: dispute reason too long");
 
         s.status = ShipmentStatus.Disputed;
         s.disputeReason = reason;
+        s.disputedAt = block.timestamp;
 
         emit DisputeOpened(id, msg.sender, reason);
     }
@@ -205,7 +250,12 @@ contract CargoBill is ReentrancyGuard {
         uint256 shipperAmount = s.amount - carrierAmount;
 
         s.status = ShipmentStatus.Resolved;
-        reputation[s.carrier].disputed++;
+        if (carrierBps < 5000) {
+            reputation[s.carrier].disputed++;
+        }
+        if (carrierBps >= 5000) {
+            shipperDisputesLost[s.shipper]++;
+        }
 
         if (carrierAmount > 0) {
             IERC20(usdc).safeTransfer(s.carrier, carrierAmount);
@@ -217,28 +267,63 @@ contract CargoBill is ReentrancyGuard {
         emit DisputeResolved(id, carrierBps, carrierAmount, shipperAmount);
     }
 
+    function escalateTimeout(uint256 id) external nonReentrant {
+        Shipment storage s = shipments[id];
+
+        require(s.status == ShipmentStatus.Disputed, "CargoBill: bad status");
+        require(
+            block.timestamp >= s.disputedAt + ESCALATE_TIMEOUT_DELAY,
+            "CargoBill: dispute timeout not reached"
+        );
+
+        uint256 carrierAmount = (s.amount * 5000) / 10_000;
+        uint256 shipperAmount = s.amount - carrierAmount;
+
+        s.status = ShipmentStatus.Resolved;
+
+        if (carrierAmount > 0) {
+            IERC20(usdc).safeTransfer(s.carrier, carrierAmount);
+        }
+        if (shipperAmount > 0) {
+            IERC20(usdc).safeTransfer(s.shipper, shipperAmount);
+        }
+
+        emit DisputeResolved(id, 5000, carrierAmount, shipperAmount);
+        emit DisputeTimeoutResolved(id, carrierAmount, shipperAmount);
+    }
+
     function cancel(uint256 id) external nonReentrant {
         Shipment storage s = shipments[id];
 
         require(msg.sender == s.shipper, "CargoBill: not shipper");
         require(s.status == ShipmentStatus.Created, "CargoBill: bad status");
+        require(block.timestamp >= s.pickupDeadline, "CargoBill: pickup deadline not passed");
 
         s.status = ShipmentStatus.Cancelled;
-        if (block.timestamp >= s.deadline) {
-            reputation[s.carrier].late++;
-        }
 
         IERC20(usdc).safeTransfer(s.shipper, s.amount);
 
         emit ShipmentCancelled(id);
     }
 
-    function changeArbiter(address newArbiter) external onlyArbiter {
+    function transferArbiter(address newArbiter) external onlyArbiter {
         require(newArbiter != address(0), "CargoBill: zero arbiter");
+        pendingArbiter = newArbiter;
+
+        emit ArbiterTransferStarted(arbiter, newArbiter);
+    }
+
+    function acceptArbiter() external {
+        require(msg.sender == pendingArbiter, "CargoBill: not pending arbiter");
 
         address oldArbiter = arbiter;
-        arbiter = newArbiter;
+        arbiter = pendingArbiter;
+        pendingArbiter = address(0);
 
-        emit ArbiterChanged(oldArbiter, newArbiter);
+        emit ArbiterChanged(oldArbiter, arbiter);
+    }
+
+    function getShipperDisputesLost(address shipper) external view returns (uint256) {
+        return shipperDisputesLost[shipper];
     }
 }
