@@ -30,7 +30,7 @@ export default function CarrierView({ shipments, refetch, addLog }: CarrierViewP
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--surface-strong)] p-5">
+      <div className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface-strong)] p-5">
         <div className="text-xs text-[var(--subtle)] uppercase mb-2 font-500" style={{ letterSpacing: '0.07em' }}>Released to you</div>
         <div className="display text-4xl font-700 tabular-nums text-[var(--ink)]">
           ${formatUSDC(totalEarnings)}
@@ -45,7 +45,7 @@ export default function CarrierView({ shipments, refetch, addLog }: CarrierViewP
             ['Active Jobs', activeJobs.length, <Truck size={16} className="text-[var(--accent)]" />],
             ['Pending Payout', `$${formatUSDC(activeJobs.reduce((a, s) => a + netOfFee(s.amount), 0n))}`, <DollarSign size={16} className="text-[var(--warning)]" />],
           ] as const).map(([label, value, icon]) => (
-            <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center gap-3">
+            <div key={label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center shrink-0">{icon}</div>
               <div>
                 <div className="text-xs text-[var(--subtle)] font-500">{label}</div>
@@ -60,7 +60,7 @@ export default function CarrierView({ shipments, refetch, addLog }: CarrierViewP
       <div>
         <h2 className="display text-base font-600 text-[var(--ink)] mb-3">Incoming Jobs</h2>
         {myJobs.length === 0 ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
             <Package size={32} className="text-[var(--subtle)] mx-auto mb-3" />
             <p className="text-sm text-[var(--subtle)]">No jobs assigned to your address.</p>
             <p className="text-xs text-[var(--subtle)] mt-1">Ask a shipper to assign a shipment to you.</p>

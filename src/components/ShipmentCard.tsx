@@ -30,7 +30,7 @@ export default function ShipmentCard({ shipment, viewerAddress, onClick }: Shipm
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-strong)] transition-colors p-4 group"
+      className="w-full text-left rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-strong)] transition-colors p-4 group"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

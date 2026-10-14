@@ -160,7 +160,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
           ['Active', myShipments.filter(s => [ShipmentStatus.Created, ShipmentStatus.PickedUp, ShipmentStatus.Delivered].includes(s.status)).length, ''],
           ['In Escrow', `$${formatUSDC(myShipments.filter(s => ![ShipmentStatus.Released, ShipmentStatus.Cancelled, ShipmentStatus.Resolved, ShipmentStatus.Refunded].includes(s.status)).reduce((a, s) => a + s.amount, 0n))}`, 'USDC'],
         ] as const).map(([label, value, unit]) => (
-          <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div key={label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
             <div className="text-xs text-[var(--subtle)] mb-1 uppercase tracking-wider" style={{ letterSpacing: '0.07em' }}>{label}</div>
             <div className="display text-2xl font-700 tabular-nums text-[var(--ink)]">{value}</div>
             {unit && <div className="text-xs text-[var(--subtle)] mt-0.5">{unit}</div>}
@@ -173,7 +173,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
           <h2 className="display text-base font-600 text-[var(--ink)]">My Shipments</h2>
           <button
             onClick={() => setShowCreate(!showCreate)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] text-sm font-600 hover:bg-[var(--accent-hover)] transition-colors min-h-[36px]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm font-600 hover:bg-[var(--accent-hover)] transition-colors min-h-[36px]"
           >
             {showCreate ? <X size={14} /> : <Plus size={14} />}
             {showCreate ? 'Cancel' : 'New Shipment'}
@@ -181,7 +181,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
         </div>
 
         {showCreate && (
-          <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--surface-strong)] p-5 mb-4">
+          <div className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface-strong)] p-5 mb-4">
             <h3 className="display text-sm font-600 text-[var(--ink)] mb-4">Create Shipment</h3>
             <div className="space-y-3">
               <div>
@@ -255,7 +255,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
               <button
                 onClick={handleCreate}
                 disabled={busy}
-                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px]"
+                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px]"
               >
                 {step === 'approving' && isApproving && 'Approving USDC in wallet...'}
                 {step === 'approving' && !isApproving && 'Confirming USDC approval...'}
@@ -268,7 +268,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
         )}
 
         {myShipments.length === 0 ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
             <Package size={32} className="text-[var(--subtle)] mx-auto mb-3" />
             <p className="text-sm text-[var(--subtle)]">No shipments created yet.</p>
             <p className="text-xs text-[var(--subtle)] mt-1">Create a shipment to lock USDC in escrow for a carrier.</p>

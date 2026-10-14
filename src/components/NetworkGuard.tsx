@@ -11,7 +11,7 @@ export default function NetworkGuard() {
   if (!isConnected || chainId === CHAIN_ID) return null;
 
   return (
-    <div className="rounded-xl border border-[var(--warning)] bg-[rgba(246,194,106,0.08)] p-4 mb-6 text-sm text-[var(--warning)] flex flex-wrap items-center gap-3">
+    <div className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 mb-6 text-sm text-[var(--warning)] flex flex-wrap items-center gap-3">
       <AlertTriangle size={16} />
       <span className="flex-1">
         Your wallet is on chain {chainId}. Haulwise runs on {NETWORK.name} (chain {CHAIN_ID}).

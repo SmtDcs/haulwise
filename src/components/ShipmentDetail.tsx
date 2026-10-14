@@ -18,8 +18,9 @@ import {
   AUTO_RELEASE_DELAY_S
 } from '../lib/utils';
 import { useShipment } from '../hooks/useShipments';
+import { useNowSec } from '../hooks/useNow';
 import StatusBadge from './StatusBadge';
-import { X, ExternalLink, Truck, CheckCircle, Clock, AlertTriangle, RotateCcw, Scale } from 'lucide-react';
+import { X, Check, ExternalLink, Truck, CheckCircle, Clock, AlertTriangle, RotateCcw, Scale } from 'lucide-react';
 
 interface ShipmentDetailProps {
   shipmentId: number;
@@ -33,6 +34,7 @@ type ActionType = 'pickup' | 'deliver' | 'confirm' | 'autorelease' | 'dispute' |
 
 export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, refetch, addLog }: ShipmentDetailProps) {
   const { shipment, refetch: refetchDetail } = useShipment(shipmentId);
+  const nowSec = useNowSec();
   const [disputeReason, setDisputeReason] = useState('');
   const [showDisputeInput, setShowDisputeInput] = useState(false);
 
@@ -63,8 +65,8 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
 
   if (!shipment) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(17,24,39,0.45)] p-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
           <div className="text-[var(--subtle)]">Loading...</div>
         </div>
       </div>
@@ -73,7 +75,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
 
   const isShipper = viewerAddress?.toLowerCase() === shipment.shipper.toLowerCase();
   const isCarrier = viewerAddress?.toLowerCase() === shipment.carrier.toLowerCase();
-  const nowSec = Math.floor(Date.now() / 1000);
   const canCancel = isShipper && shipment.status === ShipmentStatus.Created && nowSec >= Number(shipment.pickupDeadline);
   const refundEligible = isShipper && shipment.status === ShipmentStatus.PickedUp && canRefundUndelivered(shipment.deliveryDeadline);
   const escalateEligible = shipment.status === ShipmentStatus.Disputed && canEscalateDispute(shipment.disputedAt);
@@ -139,32 +140,34 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
   const busy = isPending || isConfirming;
   const isFinalStatus = [ShipmentStatus.Released, ShipmentStatus.Resolved, ShipmentStatus.Cancelled, ShipmentStatus.Refunded].includes(shipment.status);
 
-  const timeline = [
-    { label: 'Created', done: true },
+  const fmt = (t: bigint) => (t > 0n ? new Date(Number(t) * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+  const st = shipment.status;
+  const pickedStates = [ShipmentStatus.PickedUp, ShipmentStatus.Delivered, ShipmentStatus.Released, ShipmentStatus.Disputed, ShipmentStatus.Resolved, ShipmentStatus.Refunded];
+  type Step = { label: string; done: boolean; meta: string; tone?: 'bad' };
+  const timeline: Step[] = [
+    { label: 'Escrow funded', done: true, meta: '' },
     {
-      label: 'Picked Up',
-      done: [
-        ShipmentStatus.PickedUp,
-        ShipmentStatus.Delivered,
-        ShipmentStatus.Released,
-        ShipmentStatus.Disputed,
-        ShipmentStatus.Resolved,
-        ShipmentStatus.Refunded,
-      ].includes(shipment.status),
+      label: 'Picked up',
+      done: pickedStates.includes(st) && shipment.pickedUpAt > 0n,
+      meta: shipment.pickedUpAt > 0n ? fmt(shipment.pickedUpAt) : `due ${fmt(shipment.pickupDeadline)}`,
     },
     {
       label: 'Delivered',
-      done: [ShipmentStatus.Delivered, ShipmentStatus.Released, ShipmentStatus.Resolved].includes(shipment.status),
-    },
-    {
-      label: shipment.status === ShipmentStatus.Refunded ? 'Refunded' : 'Released',
-      done: [ShipmentStatus.Released, ShipmentStatus.Resolved, ShipmentStatus.Refunded].includes(shipment.status),
+      done: shipment.deliveredAt > 0n,
+      meta: shipment.deliveredAt > 0n ? fmt(shipment.deliveredAt) : `due ${fmt(shipment.deliveryDeadline)}`,
     },
   ];
+  if (st === ShipmentStatus.Disputed || st === ShipmentStatus.Resolved) {
+    timeline.push({ label: 'Dispute opened', done: true, meta: fmt(shipment.disputedAt), tone: 'bad' });
+  }
+  if (st === ShipmentStatus.Cancelled) timeline.push({ label: 'Cancelled, escrow returned', done: true, meta: '', tone: 'bad' });
+  else if (st === ShipmentStatus.Refunded) timeline.push({ label: 'Refunded to shipper', done: true, meta: '', tone: 'bad' });
+  else if (st === ShipmentStatus.Resolved) timeline.push({ label: 'Resolved by arbiter', done: true, meta: '' });
+  else timeline.push({ label: 'Payment released', done: st === ShipmentStatus.Released, meta: '' });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[#0d1b2f] overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[rgba(17,24,39,0.45)] p-4">
+      <div className="w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <span className="display text-lg font-700 text-[var(--accent)]">#{shipmentId}</span>
@@ -176,9 +179,9 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          <div className="rounded-xl bg-[var(--surface-muted)] p-4">
+          <div className="rounded-lg bg-[var(--surface-muted)] p-4">
             <div className="text-xs text-[var(--subtle)] mb-1">Escrowed Amount</div>
-            <div className="display text-3xl font-700 tabular-nums text-[var(--ink)]">${formatUSDC(shipment.amount)}</div>
+            <div className="text-3xl font-600 tabular-nums tracking-tight text-[var(--ink)]">${formatUSDC(shipment.amount)}</div>
             <div className="text-xs text-[var(--subtle)] mt-0.5">USDC · 0.5% protocol fee on release</div>
           </div>
 
@@ -225,29 +228,30 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           </div>
 
-          {shipment.status !== ShipmentStatus.Cancelled && shipment.status !== ShipmentStatus.Disputed && (
-            <div>
-              <div className="text-xs text-[var(--subtle)] mb-2 uppercase font-500" style={{ letterSpacing: '0.07em' }}>Timeline</div>
-              <div className="flex items-center gap-0">
-                {timeline.map((step, i) => (
-                  <div key={step.label} className="flex items-center flex-1">
-                    <div className={`flex flex-col items-center ${i < timeline.length - 1 ? 'flex-1' : ''}`}>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-700 ${step.done ? 'bg-[var(--success)] text-[#0d1b2f]' : 'bg-[var(--surface-muted)] text-[var(--subtle)]'}`}>
-                        {step.done ? '✓' : i + 1}
-                      </div>
-                      <div className={`text-xs mt-1 text-center ${step.done ? 'text-[var(--success)]' : 'text-[var(--subtle)]'}`}>{step.label}</div>
+          <div>
+            <div className="eyebrow mb-3">Timeline</div>
+            <ol className="relative">
+              {timeline.map((step, i) => {
+                const last = i === timeline.length - 1;
+                const tone = step.tone === 'bad' ? 'bg-[var(--danger)] border-[var(--danger)]' : step.done ? 'bg-[var(--ink)] border-[var(--ink)]' : 'bg-[var(--surface)] border-[var(--border-strong)]';
+                return (
+                  <li key={step.label} className="relative flex gap-3 pb-4 last:pb-0">
+                    {!last && <span className={`absolute left-[7px] top-4 bottom-0 w-px ${step.done && timeline[i + 1].done ? 'bg-[var(--ink)]' : 'bg-[var(--border)]'}`} />}
+                    <span className={`relative mt-0.5 w-[15px] h-[15px] rounded-full border-2 shrink-0 flex items-center justify-center ${tone}`}>
+                      {step.done && <Check size={9} strokeWidth={3} className="text-white" />}
+                    </span>
+                    <div className="flex-1 min-w-0 flex flex-wrap items-baseline justify-between gap-x-3">
+                      <span className={`text-sm ${step.done ? 'text-[var(--ink)] font-500' : 'text-[var(--subtle)]'}`}>{step.label}</span>
+                      <span className="text-xs text-[var(--subtle)] tabular-nums">{step.meta}</span>
                     </div>
-                    {i < timeline.length - 1 && (
-                      <div className={`h-0.5 flex-1 mx-1 mb-5 ${step.done && timeline[i + 1].done ? 'bg-[var(--success)]' : 'bg-[var(--surface-muted)]'}`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
 
           {shipment.status === ShipmentStatus.Disputed && (
-            <div className="rounded-lg border border-[var(--danger)] bg-[rgba(232,109,122,0.08)] p-3 space-y-2">
+            <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-600">
                 <AlertTriangle size={12} /> Dispute Under Review
               </div>
@@ -321,7 +325,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               <button
                 onClick={() => doAction('pickup')}
                 disabled={busy || nowSec > Number(shipment.pickupDeadline)}
-                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <Truck size={16} />
                 {nowSec > Number(shipment.pickupDeadline)
@@ -334,7 +338,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               <button
                 onClick={() => doAction('deliver')}
                 disabled={busy}
-                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
                 {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Mark Delivered'}
@@ -345,7 +349,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               <button
                 onClick={() => doAction('confirm')}
                 disabled={busy}
-                className="w-full py-2.5 rounded-lg bg-[var(--success)] text-[#0d1b2f] font-700 text-sm hover:opacity-90 disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[var(--success)] text-white font-700 text-sm hover:opacity-90 disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
                 {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Confirm Delivery & Release Funds'}
@@ -379,7 +383,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               <button
                 onClick={() => doAction('autorelease')}
                 disabled={busy}
-                className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-500 text-sm hover:bg-[rgba(246,194,106,0.1)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-500 text-sm hover:bg-[var(--warning-soft)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <Clock size={16} />
                 {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Auto-Release Funds'}
@@ -390,7 +394,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               <button
                 onClick={() => doAction('escalate')}
                 disabled={busy}
-                className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-600 text-sm hover:bg-[rgba(246,194,106,0.1)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-600 text-sm hover:bg-[var(--warning-soft)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <Scale size={16} />
                 {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Escalate Dispute (Timeout 50/50 Split)'}
@@ -402,7 +406,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 {!showDisputeInput ? (
                   <button
                     onClick={() => setShowDisputeInput(true)}
-                    className="w-full py-2 rounded-lg text-[var(--danger)] text-sm font-500 hover:bg-[rgba(232,109,122,0.08)] transition-colors min-h-[40px] flex items-center justify-center gap-2"
+                    className="w-full py-2 rounded-lg text-[var(--danger)] text-sm font-500 hover:bg-[var(--danger-soft)] transition-colors min-h-[40px] flex items-center justify-center gap-2"
                   >
                     <AlertTriangle size={14} /> Open Dispute
                   </button>

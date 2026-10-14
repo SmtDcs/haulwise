@@ -32,7 +32,7 @@ export default function ReputationBadge({ reputation, compact = false }: Reputat
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-wider text-[var(--subtle)] font-600" style={{ letterSpacing: '0.08em' }}>
           Reputation

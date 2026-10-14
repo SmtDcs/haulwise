@@ -116,11 +116,11 @@ export default function AgentPanel({ shipments, reputations, logs, onAddLog, onC
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col h-full min-h-[400px]">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] flex flex-col h-full min-h-[280px] xl:min-h-[400px]">
       <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center">
-            <Bot size={14} className="text-[#0d1b2f]" />
+            <Bot size={14} className="text-white" />
           </div>
           <div>
             <div className="text-sm font-600 text-[var(--ink)]">Shipment monitor</div>

@@ -25,7 +25,7 @@ export default function ArbiterView({ shipments, refetch }: ArbiterViewProps) {
         </p>
       </div>
       {disputed.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--subtle)]">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--subtle)]">
           No shipments are in dispute.
         </div>
       ) : (
@@ -67,7 +67,7 @@ function DisputeRow({ shipment, refetch }: { shipment: Shipment; refetch: () => 
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-600 text-[var(--ink)]">Shipment #{Number(shipment.id)}</div>
@@ -111,7 +111,7 @@ function DisputeRow({ shipment, refetch }: { shipment: Shipment; refetch: () => 
       <button
         onClick={resolve}
         disabled={busy}
-        className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+        className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
       >
         <Scale size={16} />
         {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Resolve dispute'}

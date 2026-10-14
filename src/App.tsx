@@ -10,7 +10,8 @@ import CarrierView from './components/CarrierView';
 import AgentPanel from './components/AgentPanel';
 import ArbiterView from './components/ArbiterView';
 import NetworkGuard from './components/NetworkGuard';
-import { Package } from 'lucide-react';
+import { Package, ExternalLink } from 'lucide-react';
+import { NETWORK } from './config';
 
 export default function App() {
   const [role, setRole] = useState<Role>('shipper');
@@ -63,14 +64,38 @@ export default function App() {
   const notDeployed = !CARGOBILL_ADDRESS;
 
   return (
-    <div className="min-h-dvh" style={{ background: 'var(--bg-gradient)' }}>
+    <div className="min-h-dvh bg-[var(--bg)]">
       <Header role={activeRole} onRoleChange={setRole} showArbiter={isArbiter} />
+
+      <section className="border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h1 className="text-lg sm:text-xl font-600 text-[var(--ink)]">Freight payments held in USDC escrow until delivery is confirmed.</h1>
+            <p className="text-sm text-[var(--muted)] mt-1">
+              Shippers lock the rate up front, carriers are paid on delivery, disputes go to an arbiter. 0.5% fee on release.
+            </p>
+          </div>
+          {CARGOBILL_ADDRESS && (
+            <a
+              href={`${NETWORK.explorerBase}/address/${CARGOBILL_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 self-start md:self-auto rounded-md border border-[var(--border)] px-3 py-2 text-xs text-[var(--ink-2)] hover:border-[var(--border-strong)] transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-[var(--success)]" />
+              <span className="font-500">Live on {NETWORK.key === 'arc' ? 'Arc mainnet' : NETWORK.name}</span>
+              <span className="mono text-[var(--subtle)]">{CARGOBILL_ADDRESS.slice(0, 6)}…{CARGOBILL_ADDRESS.slice(-4)}</span>
+              <ExternalLink size={12} className="text-[var(--subtle)]" />
+            </a>
+          )}
+        </div>
+      </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <NetworkGuard />
 
         {notDeployed && (
-          <div className="rounded-xl border border-[var(--warning)] bg-[rgba(246,194,106,0.08)] p-4 mb-6 text-sm text-[var(--warning)] flex items-center gap-2">
+          <div className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 mb-6 text-sm text-[var(--warning)] flex items-center gap-2">
             <Package size={16} />
             No escrow contract configured for this network. Set VITE_CARGOBILL_ADDRESS.
           </div>
@@ -79,9 +104,10 @@ export default function App() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
           <div className="space-y-4">
             {!address && (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-sm text-[var(--muted)]">
-                Haulwise holds freight payments in USDC escrow on Arc until delivery is confirmed. Connect a wallet to
-                create shipments as a shipper or manage jobs as a carrier.
+              <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--surface)] p-5 text-sm text-[var(--muted)]">
+                <div className="font-500 text-[var(--ink)] mb-1">Connect a wallet to continue</div>
+                Shippers create shipments and deposit the freight rate. Carriers see jobs assigned to their address and
+                mark pickup and delivery. Any EVM wallet on {NETWORK.name} (chain {NETWORK.chainId}) works.
               </div>
             )}
             {activeRole === 'shipper' && <ShipperView shipments={shipments} refetch={refetch} addLog={addLog} />}
@@ -89,7 +115,7 @@ export default function App() {
             {activeRole === 'arbiter' && <ArbiterView shipments={shipments} refetch={refetch} />}
           </div>
 
-          <div className="xl:sticky xl:top-24 xl:self-start">
+          <div className="xl:sticky xl:top-20 xl:self-start">
             <AgentPanel
               shipments={shipments}
               reputations={reputations}
