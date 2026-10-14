@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
+import { useState, useEffect, useRef } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { toast } from 'sonner';
 import { ShipmentStatus, AgentLog } from '../types/cargo';
 import { CARGOBILL_ABI, CARGOBILL_ADDRESS } from '../lib/cargobill';
@@ -15,6 +15,7 @@ import {
   canRefundUndelivered,
   canEscalateDispute,
   parseOnchainError,
+  AUTO_RELEASE_DELAY_S
 } from '../lib/utils';
 import { useShipment } from '../hooks/useShipments';
 import StatusBadge from './StatusBadge';
@@ -32,23 +33,30 @@ type ActionType = 'pickup' | 'deliver' | 'confirm' | 'autorelease' | 'dispute' |
 
 export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, refetch, addLog }: ShipmentDetailProps) {
   const { shipment, refetch: refetchDetail } = useShipment(shipmentId);
-  useSwitchChain();
   const [disputeReason, setDisputeReason] = useState('');
   const [showDisputeInput, setShowDisputeInput] = useState(false);
 
   const { writeContract, data: txHash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
+  // Only log an action once its transaction is confirmed onchain.
+  const pendingLogRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (isSuccess) {
       toast.success('Transaction confirmed');
+      if (pendingLogRef.current) {
+        addLog({ type: 'action', shipmentId, message: pendingLogRef.current });
+        pendingLogRef.current = null;
+      }
       void refetchDetail();
       refetch();
     }
-  }, [isSuccess, refetchDetail, refetch]);
+  }, [isSuccess, refetchDetail, refetch, addLog, shipmentId]);
 
   useEffect(() => {
     if (error) {
+      pendingLogRef.current = null;
       toast.error(parseOnchainError(error));
     }
   }, [error]);
@@ -96,7 +104,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
         args: [BigInt(shipmentId), disputeReason],
         chainId: CHAIN_ID,
       });
-      addLog({ type: 'action', shipmentId, message: `Dispute opened on shipment #${shipmentId}: "${disputeReason}"` });
+      pendingLogRef.current = `Dispute opened on shipment #${shipmentId}: "${disputeReason}"`;
       return;
     }
 
@@ -118,14 +126,14 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
     const logMap: Record<ActionType, string> = {
       pickup: `Carrier marked shipment #${shipmentId} as picked up`,
       deliver: `Carrier marked shipment #${shipmentId} as delivered`,
-      confirm: `Shipper confirmed delivery for shipment #${shipmentId} — funds released`,
+      confirm: `Shipper confirmed delivery for shipment #${shipmentId}; funds released`,
       autorelease: `Auto-release triggered for shipment #${shipmentId}`,
       dispute: '',
-      cancel: `Shipment #${shipmentId} cancelled — funds refunded`,
+      cancel: `Shipment #${shipmentId} cancelled; escrow refunded`,
       refund: `Shipper claimed refund for undelivered shipment #${shipmentId}`,
       escalate: `Dispute timeout escalated for shipment #${shipmentId} (50/50 split)`,
     };
-    addLog({ type: 'action', shipmentId, message: logMap[action] });
+    pendingLogRef.current = logMap[action];
   }
 
   const busy = isPending || isConfirming;
@@ -157,7 +165,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[#0d1b2f] overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <span className="display text-lg font-700 text-[var(--accent)]">#{shipmentId}</span>
@@ -168,16 +175,13 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
           </button>
         </div>
 
-        {/* Content */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {/* Amount */}
           <div className="rounded-xl bg-[var(--surface-muted)] p-4">
             <div className="text-xs text-[var(--subtle)] mb-1">Escrowed Amount</div>
             <div className="display text-3xl font-700 tabular-nums text-[var(--ink)]">${formatUSDC(shipment.amount)}</div>
             <div className="text-xs text-[var(--subtle)] mt-0.5">USDC · 0.5% protocol fee on release</div>
           </div>
 
-          {/* Parties */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-[var(--border)] p-3">
               <div className="text-xs text-[var(--subtle)] mb-1">Shipper</div>
@@ -191,7 +195,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           </div>
 
-          {/* Deadlines */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
               <div className="text-xs text-[var(--subtle)] mb-1 flex items-center gap-1">
@@ -222,7 +225,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           </div>
 
-          {/* Timeline */}
           {shipment.status !== ShipmentStatus.Cancelled && shipment.status !== ShipmentStatus.Disputed && (
             <div>
               <div className="text-xs text-[var(--subtle)] mb-2 uppercase font-500" style={{ letterSpacing: '0.07em' }}>Timeline</div>
@@ -244,7 +246,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           )}
 
-          {/* Dispute reason & escalation info */}
           {shipment.status === ShipmentStatus.Disputed && (
             <div className="rounded-lg border border-[var(--danger)] bg-[rgba(232,109,122,0.08)] p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-600">
@@ -265,7 +266,6 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           )}
 
-          {/* Undelivered grace period status */}
           {shipment.status === ShipmentStatus.PickedUp && (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--muted)]">
               {refundEligible ? (
@@ -280,28 +280,29 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
             </div>
           )}
 
-          {/* Auto-release countdown */}
           {shipment.status === ShipmentStatus.Delivered && (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
               <Clock size={14} className="inline mr-1.5 text-[var(--warning)]" />
               {isAutoReleaseReady(shipment.deliveredAt)
-                ? 'Auto-release is available now — anyone can trigger it.'
+                ? 'Auto-release is available. Anyone can trigger it.'
                 : `Auto-release in ${formatAutoReleaseCountdown(shipment.deliveredAt)} if shipper doesn't confirm.`}
             </div>
           )}
 
-          {/* Metadata URI */}
           {shipment.metadataURI && (
             <div className="text-xs text-[var(--subtle)]">
               <span className="font-500">Metadata: </span>
-              <a href={shipment.metadataURI} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">
-                {shipment.metadataURI.slice(0, 40)}{shipment.metadataURI.length > 40 ? '...' : ''}
-                <ExternalLink size={10} className="inline ml-0.5" />
-              </a>
+              {/^https:\/\//i.test(shipment.metadataURI) ? (
+                <a href={shipment.metadataURI} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline break-all">
+                  {shipment.metadataURI.slice(0, 60)}{shipment.metadataURI.length > 60 ? '…' : ''}
+                  <ExternalLink size={10} className="inline ml-0.5" />
+                </a>
+              ) : (
+                <span className="break-all">{shipment.metadataURI}</span>
+              )}
             </div>
           )}
 
-          {/* Explorer link */}
           {txHash && (
             <a
               href={buildTxExplorerUrl(CHAIN_ID, txHash)}
@@ -314,10 +315,8 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
           )}
         </div>
 
-        {/* Action buttons */}
         {!isFinalStatus && (
           <div className="p-5 border-t border-[var(--border)] space-y-2">
-            {/* Carrier actions */}
             {isCarrier && shipment.status === ShipmentStatus.Created && (
               <button
                 onClick={() => doAction('pickup')}
@@ -327,7 +326,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 <Truck size={16} />
                 {nowSec > Number(shipment.pickupDeadline)
                   ? 'Pickup deadline passed'
-                  : busy ? 'Confirm in wallet...' : 'Mark Picked Up'}
+                  : isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Mark Picked Up'}
               </button>
             )}
 
@@ -338,11 +337,10 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-[#0d1b2f] font-600 text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
-                {busy ? 'Confirm in wallet...' : 'Mark Delivered'}
+                {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Mark Delivered'}
               </button>
             )}
 
-            {/* Shipper actions */}
             {isShipper && shipment.status === ShipmentStatus.Delivered && (
               <button
                 onClick={() => doAction('confirm')}
@@ -350,7 +348,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 className="w-full py-2.5 rounded-lg bg-[var(--success)] text-[#0d1b2f] font-700 text-sm hover:opacity-90 disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
-                {busy ? 'Confirm in wallet...' : 'Confirm Delivery & Release Funds'}
+                {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Confirm Delivery & Release Funds'}
               </button>
             )}
 
@@ -362,11 +360,10 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
               >
                 {!canCancel
                   ? `Cancel available after pickup deadline (${formatCountdown(shipment.pickupDeadline)})`
-                  : busy ? 'Confirm in wallet...' : 'Cancel & Refund Escrow'}
+                  : isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Cancel & Refund Escrow'}
               </button>
             )}
 
-            {/* Shipper refund undelivered */}
             {isShipper && shipment.status === ShipmentStatus.PickedUp && refundEligible && (
               <button
                 onClick={() => doAction('refund')}
@@ -374,11 +371,10 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 className="w-full py-2.5 rounded-lg bg-[var(--danger)] text-white font-600 text-sm hover:opacity-90 disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <RotateCcw size={16} />
-                {busy ? 'Confirm in wallet...' : 'Claim Full Refund (Undelivered)'}
+                {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Claim Full Refund (Undelivered)'}
               </button>
             )}
 
-            {/* Auto-release */}
             {shipment.status === ShipmentStatus.Delivered && isAutoReleaseReady(shipment.deliveredAt) && (
               <button
                 onClick={() => doAction('autorelease')}
@@ -386,11 +382,10 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-500 text-sm hover:bg-[rgba(246,194,106,0.1)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <Clock size={16} />
-                {busy ? 'Confirm in wallet...' : 'Auto-Release Funds'}
+                {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Auto-Release Funds'}
               </button>
             )}
 
-            {/* Dispute Escalate Timeout (anyone can trigger after 14 days) */}
             {shipment.status === ShipmentStatus.Disputed && escalateEligible && (
               <button
                 onClick={() => doAction('escalate')}
@@ -398,11 +393,10 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
                 className="w-full py-2.5 rounded-lg border border-[var(--warning)] text-[var(--warning)] font-600 text-sm hover:bg-[rgba(246,194,106,0.1)] disabled:opacity-50 transition-colors min-h-[44px] flex items-center justify-center gap-2"
               >
                 <Scale size={16} />
-                {busy ? 'Confirm in wallet...' : 'Escalate Dispute (Timeout 50/50 Split)'}
+                {isPending ? 'Confirm in wallet…' : isConfirming ? 'Confirming…' : 'Escalate Dispute (Timeout 50/50 Split)'}
               </button>
             )}
 
-            {/* Dispute button for participants */}
             {(isShipper || isCarrier) && [ShipmentStatus.PickedUp, ShipmentStatus.Delivered].includes(shipment.status) && (
               <div>
                 {!showDisputeInput ? (
@@ -449,7 +443,7 @@ export default function ShipmentDetail({ shipmentId, viewerAddress, onClose, ref
 }
 
 function formatAutoReleaseCountdown(deliveredAt: bigint): string {
-  const releaseAt = Number(deliveredAt) + 48 * 3600;
+  const releaseAt = Number(deliveredAt) + AUTO_RELEASE_DELAY_S;
   const now = Math.floor(Date.now() / 1000);
   const diff = releaseAt - now;
   if (diff <= 0) return '';

@@ -1,21 +1,37 @@
+import { formatUnits, parseUnits, BaseError, ContractFunctionRevertedError } from 'viem';
 import { ShipmentStatus } from '../types/cargo';
+import { USDC_DECIMALS } from '../onchain-facts';
+
+// Mirrors the contract constants.
+export const PROTOCOL_FEE_BPS = 50n;
+export const AUTO_RELEASE_DELAY_S = 48 * 3600;
+export const REFUND_UNDELIVERED_DELAY_S = 7 * 86400;
+export const ESCALATE_TIMEOUT_DELAY_S = 14 * 86400;
+
+export function netOfFee(amount: bigint): bigint {
+  return amount - (amount * PROTOCOL_FEE_BPS) / 10_000n;
+}
 
 export function formatAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 export function formatUSDC(amount: bigint): string {
-  const num = Number(amount) / 1_000_000;
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
+  // Format from the exact decimal string; never route base units through a float.
+  const [whole, frac = ''] = formatUnits(amount, USDC_DECIMALS).split('.');
+  const cents = (frac + '00').slice(0, 2);
+  return `${BigInt(whole).toLocaleString('en-US')}.${cents}`;
 }
 
+/** Parses a user-entered USDC amount. Returns 0n for anything invalid or with more than 6 decimals. */
 export function parseUSDC(value: string): bigint {
-  const num = parseFloat(value);
-  if (isNaN(num) || num <= 0) return 0n;
-  return BigInt(Math.round(num * 1_000_000));
+  const v = value.trim();
+  if (!/^\d+(\.\d{1,6})?$/.test(v)) return 0n;
+  try {
+    return parseUnits(v, USDC_DECIMALS);
+  } catch {
+    return 0n;
+  }
 }
 
 export function formatCountdown(deadline: bigint): string {
@@ -30,7 +46,7 @@ export function formatCountdown(deadline: bigint): string {
 }
 
 export function formatAutoReleaseCountdown(deliveredAt: bigint): string {
-  const releaseAt = Number(deliveredAt) + 48 * 3600;
+  const releaseAt = Number(deliveredAt) + AUTO_RELEASE_DELAY_S;
   const now = Math.floor(Date.now() / 1000);
   const diff = releaseAt - now;
   if (diff <= 0) return 'Auto-release available now';
@@ -40,7 +56,7 @@ export function formatAutoReleaseCountdown(deliveredAt: bigint): string {
 }
 
 export function formatRefundCountdown(deliveryDeadline: bigint): string {
-  const refundAt = Number(deliveryDeadline) + 7 * 86400;
+  const refundAt = Number(deliveryDeadline) + REFUND_UNDELIVERED_DELAY_S;
   const now = Math.floor(Date.now() / 1000);
   const diff = refundAt - now;
   if (diff <= 0) return 'Refund available now';
@@ -50,7 +66,7 @@ export function formatRefundCountdown(deliveryDeadline: bigint): string {
 }
 
 export function formatEscalateCountdown(disputedAt: bigint): string {
-  const escalateAt = Number(disputedAt) + 14 * 86400;
+  const escalateAt = Number(disputedAt) + ESCALATE_TIMEOUT_DELAY_S;
   const now = Math.floor(Date.now() / 1000);
   const diff = escalateAt - now;
   if (diff <= 0) return 'Escalation available now';
@@ -72,15 +88,15 @@ export function isDeliveryOverdue(deliveryDeadline: bigint): boolean {
 }
 
 export function isAutoReleaseReady(deliveredAt: bigint): boolean {
-  return Date.now() / 1000 >= Number(deliveredAt) + 48 * 3600;
+  return Date.now() / 1000 >= Number(deliveredAt) + AUTO_RELEASE_DELAY_S;
 }
 
 export function canRefundUndelivered(deliveryDeadline: bigint): boolean {
-  return Math.floor(Date.now() / 1000) > Number(deliveryDeadline) + 7 * 86400;
+  return Math.floor(Date.now() / 1000) > Number(deliveryDeadline) + REFUND_UNDELIVERED_DELAY_S;
 }
 
 export function canEscalateDispute(disputedAt: bigint): boolean {
-  return disputedAt > 0n && Math.floor(Date.now() / 1000) >= Number(disputedAt) + 14 * 86400;
+  return disputedAt > 0n && Math.floor(Date.now() / 1000) >= Number(disputedAt) + ESCALATE_TIMEOUT_DELAY_S;
 }
 
 export function statusColor(status: ShipmentStatus): string {
@@ -112,15 +128,18 @@ export function statusDot(status: ShipmentStatus): string {
 }
 
 export function parseOnchainError(error: unknown): string {
-  const msg = (error as { message?: string })?.message?.toLowerCase() ?? '';
-  if (msg.includes('user rejected') || (error as { code?: number })?.code === 4001)
-    return 'Transaction cancelled.';
-  if (msg.includes('insufficient')) return 'Insufficient USDC balance.';
-  if (msg.includes('reverted')) {
-    const m = msg.match(/reason="([^"]+)"/);
-    return m ? `Failed: ${m[1]}` : 'Transaction failed.';
+  if (error instanceof BaseError) {
+    const revert = error.walk(e => e instanceof ContractFunctionRevertedError);
+    if (revert instanceof ContractFunctionRevertedError) {
+      const reason = revert.reason ?? revert.data?.errorName;
+      if (reason) return reason.replace(/^CargoBill: /, '');
+    }
+    const msg = error.message.toLowerCase();
+    if (msg.includes('user rejected') || msg.includes('user denied')) return 'Transaction cancelled.';
+    if (msg.includes('transfer amount exceeds balance') || msg.includes('insufficient')) return 'Insufficient USDC balance.';
+    if (msg.includes('chain mismatch') || msg.includes('does not match the target chain')) return 'Wallet is on the wrong network.';
+    return error.shortMessage;
   }
-  if (msg.includes('network') || msg.includes('timeout'))
-    return 'Network error. Please retry.';
+  if ((error as { code?: number })?.code === 4001) return 'Transaction cancelled.';
   return 'Something went wrong. Please try again.';
 }

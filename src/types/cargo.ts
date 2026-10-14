@@ -41,7 +41,7 @@ export interface Reputation {
   late: bigint;
 }
 
-export type Role = 'shipper' | 'carrier';
+export type Role = 'shipper' | 'carrier' | 'arbiter';
 
 export interface AgentLog {
   id: string;

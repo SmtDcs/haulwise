@@ -8,6 +8,7 @@ import {
   isAutoReleaseReady,
   canRefundUndelivered,
   canEscalateDispute,
+  AUTO_RELEASE_DELAY_S
 } from '../lib/utils';
 import StatusBadge from './StatusBadge';
 import { ChevronRight, Clock, AlertCircle } from 'lucide-react';
@@ -93,7 +94,7 @@ export default function ShipmentCard({ shipment, viewerAddress, onClick }: Shipm
 }
 
 function formatAutoReleaseCountdown(deliveredAt: bigint): string {
-  const releaseAt = Number(deliveredAt) + 48 * 3600;
+  const releaseAt = Number(deliveredAt) + AUTO_RELEASE_DELAY_S;
   const now = Math.floor(Date.now() / 1000);
   const diff = releaseAt - now;
   if (diff <= 0) return 'Auto-release available';

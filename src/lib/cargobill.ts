@@ -1,6 +1,8 @@
-// Contract config — wired after deploy
-// Address is set via VITE_CARGOBILL_ADDRESS env var; fallback is empty for pre-deploy dev
-export const CARGOBILL_ADDRESS = (import.meta.env.VITE_CARGOBILL_ADDRESS ?? '') as `0x${string}`;
+import { NETWORK } from '../config';
+
+// The escrow contract is deployed under its original name, CargoBill.
+// VITE_CARGOBILL_ADDRESS overrides the per-network default (e.g. a local deploy).
+export const CARGOBILL_ADDRESS = (import.meta.env.VITE_CARGOBILL_ADDRESS || NETWORK.escrow) as `0x${string}`;
 
 export const CARGOBILL_ABI = [
   {

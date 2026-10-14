@@ -6,7 +6,8 @@ import { Shipment, ShipmentStatus, AgentLog } from '../types/cargo';
 import { CARGOBILL_ABI, CARGOBILL_ADDRESS } from '../lib/cargobill';
 import { CHAIN_ID, USDC_ADDRESS } from '../config';
 import { buildTxExplorerUrl } from '@/onchain-facts';
-import { parseUSDC, formatUSDC } from '../lib/utils';
+import { parseUSDC, formatUSDC, parseOnchainError } from '../lib/utils';
+import { isAddress } from 'viem';
 import ShipmentCard from './ShipmentCard';
 import ShipmentDetail from './ShipmentDetail';
 import { Plus, X, Package } from 'lucide-react';
@@ -46,13 +47,26 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
     ? shipments.filter(s => s.shipper.toLowerCase() === address.toLowerCase())
     : [];
 
-  // Approve USDC
-  const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: approve, data: approveTxHash, isPending: isApproving, error: approveError } = useWriteContract();
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash });
 
-  // Create shipment
-  const { writeContract: create, data: createTxHash, isPending: isCreating } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: createSuccess } = useWaitForTransactionReceipt({ hash: createTxHash });
+  const { writeContract: create, data: createTxHash, isPending: isCreating, error: createError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: createSuccess, isError: createReverted } = useWaitForTransactionReceipt({ hash: createTxHash });
+
+  useEffect(() => {
+    const err = approveError ?? createError;
+    if (err) {
+      setStep('idle');
+      toast.error(parseOnchainError(err));
+    }
+  }, [approveError, createError]);
+
+  useEffect(() => {
+    if (createReverted) {
+      setStep('idle');
+      toast.error('Shipment transaction failed onchain.');
+    }
+  }, [createReverted]);
 
   useEffect(() => {
     if (approveSuccess && step === 'approving') {
@@ -86,7 +100,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
       setShowCreate(false);
       setForm(DEFAULT_FORM);
       const txHash = createTxHash;
-      toast.success('Shipment created!', {
+      toast.success('Shipment created', {
         description: txHash ? `Tx: ${txHash.slice(0, 10)}...` : undefined,
         action: txHash ? { label: 'View', onClick: () => window.open(buildTxExplorerUrl(CHAIN_ID, txHash), '_blank') } : undefined,
       });
@@ -98,7 +112,8 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
   function handleCreate() {
     if (!address) { toast.error('Connect your wallet'); return; }
     if (chainId !== CHAIN_ID) { switchChain({ chainId: CHAIN_ID }); return; }
-    if (!form.carrier || !form.amount) { toast.error('Fill all required fields'); return; }
+    if (!form.carrier || !form.amount) { toast.error('Carrier and amount are required'); return; }
+    if (!isAddress(form.carrier)) { toast.error('Carrier must be a valid 0x address'); return; }
     if (form.carrier.toLowerCase() === address.toLowerCase()) {
       toast.error('Carrier address cannot be your own address');
       return;
@@ -122,7 +137,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
     }
 
     const amount = parseUSDC(form.amount);
-    if (amount === 0n) { toast.error('Invalid amount'); return; }
+    if (amount === 0n) { toast.error('Enter a positive USDC amount (max 6 decimals)'); return; }
 
     pendingFormRef.current = { ...form };
     setStep('approving');
@@ -139,7 +154,6 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
 
   return (
     <div className="space-y-6">
-      {/* Hero stats row */}
       <div className="grid grid-cols-3 gap-3">
         {([
           ['Total Shipments', myShipments.length, ''],
@@ -154,7 +168,6 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
         ))}
       </div>
 
-      {/* Create shipment */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="display text-base font-600 text-[var(--ink)]">My Shipments</h2>
@@ -172,7 +185,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
             <h3 className="display text-sm font-600 text-[var(--ink)] mb-4">Create Shipment</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Carrier Address * (must not be own address)</label>
+                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Carrier address</label>
                 <input
                   value={form.carrier}
                   onChange={e => setForm(f => ({ ...f, carrier: e.target.value }))}
@@ -182,11 +195,9 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Amount (USDC) *</label>
+                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Amount (USDC)</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  inputMode="decimal"
                   value={form.amount}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                   placeholder="0.00"
@@ -196,7 +207,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Pickup Deadline (hours)</label>
+                  <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Pickup within (hours)</label>
                   <input
                     type="number"
                     min="1"
@@ -206,7 +217,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Delivery Deadline (hours)</label>
+                  <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Deliver within (hours)</label>
                   <input
                     type="number"
                     min="2"
@@ -218,7 +229,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Metadata URI (max 256 bytes)</label>
+                <label className="block text-xs text-[var(--subtle)] mb-1 font-500">Reference / document URL (optional, max 256 bytes)</label>
                 <input
                   value={form.metadataURI}
                   maxLength={256}
@@ -260,7 +271,7 @@ export default function ShipperView({ shipments, refetch, addLog }: ShipperViewP
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
             <Package size={32} className="text-[var(--subtle)] mx-auto mb-3" />
             <p className="text-sm text-[var(--subtle)]">No shipments created yet.</p>
-            <p className="text-xs text-[var(--subtle)] mt-1">Create your first shipment or seed demo data.</p>
+            <p className="text-xs text-[var(--subtle)] mt-1">Create a shipment to lock USDC in escrow for a carrier.</p>
           </div>
         ) : (
           <div className="space-y-2">

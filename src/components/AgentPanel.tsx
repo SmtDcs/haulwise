@@ -7,6 +7,7 @@ import {
   canRefundUndelivered,
   canEscalateDispute,
   isAutoReleaseReady,
+  netOfFee,
 } from '../lib/utils';
 import { Bot, AlertTriangle, Lightbulb, Activity, Trash2 } from 'lucide-react';
 
@@ -29,16 +30,14 @@ function analyzeShipments(
   lastRunRef.current = now;
 
   for (const s of shipments) {
-    // Flag overdue created shipments
     if (s.status === ShipmentStatus.Created && isPickupOverdue(s.pickupDeadline)) {
       addLog({
         type: 'flag',
         shipmentId: Number(s.id),
-        message: `Shipment #${Number(s.id)} ($${formatUSDC(s.amount)} USDC) is past its pickup deadline. Carrier has not picked up. Shipper can cancel and recover funds.`,
+        message: `Shipment #${Number(s.id)} (${formatUSDC(s.amount)} USDC) is past its pickup deadline. Carrier has not picked up. Shipper can cancel and recover funds.`,
       });
     }
 
-    // Flag picked up but past delivery deadline or refund grace period
     if (s.status === ShipmentStatus.PickedUp) {
       if (canRefundUndelivered(s.deliveryDeadline)) {
         addLog({
@@ -55,7 +54,6 @@ function analyzeShipments(
       }
     }
 
-    // Flag disputed shipments & 14-day escalation timeout
     if (s.status === ShipmentStatus.Disputed) {
       if (canEscalateDispute(s.disputedAt)) {
         addLog({
@@ -72,7 +70,6 @@ function analyzeShipments(
       }
     }
 
-    // Reputation risk
     const rep = reputations[s.carrier.toLowerCase()];
     if (rep && Number(rep.disputed) >= 2) {
       addLog({
@@ -82,12 +79,11 @@ function analyzeShipments(
       });
     }
 
-    // Suggest auto-release
     if (s.status === ShipmentStatus.Delivered && isAutoReleaseReady(s.deliveredAt)) {
       addLog({
         type: 'suggestion',
         shipmentId: Number(s.id),
-        message: `Auto-release is ready for shipment #${Number(s.id)}. Carrier can claim $${formatUSDC(s.amount - s.amount * 50n / 10000n)} USDC.`,
+        message: `Auto-release is ready for shipment #${Number(s.id)}. Carrier receives ${formatUSDC(netOfFee(s.amount))} USDC.`,
       });
     }
   }
@@ -121,15 +117,14 @@ export default function AgentPanel({ shipments, reputations, logs, onAddLog, onC
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col h-full min-h-[400px]">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center">
             <Bot size={14} className="text-[#0d1b2f]" />
           </div>
           <div>
-            <div className="text-sm font-600 text-[var(--ink)]">Settlement Agent</div>
-            <div className="text-xs text-[var(--subtle)]">AI-powered risk monitor</div>
+            <div className="text-sm font-600 text-[var(--ink)]">Shipment monitor</div>
+            <div className="text-xs text-[var(--subtle)]">Rule-based checks, runs in your browser</div>
           </div>
         </div>
         {logs.length > 0 && (
@@ -139,13 +134,12 @@ export default function AgentPanel({ shipments, reputations, logs, onAddLog, onC
         )}
       </div>
 
-      {/* Log feed */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {logs.length === 0 ? (
           <div className="text-center py-8">
             <Bot size={28} className="text-[var(--subtle)] mx-auto mb-2" />
-            <p className="text-xs text-[var(--subtle)]">Monitoring active shipments...</p>
-            <p className="text-xs text-[var(--subtle)] mt-0.5">Flags, suggestions, and actions will appear here.</p>
+            <p className="text-xs text-[var(--subtle)]">No alerts.</p>
+            <p className="text-xs text-[var(--subtle)] mt-0.5">Overdue pickups, refund windows, disputes and auto-release eligibility show up here.</p>
           </div>
         ) : (
           logs.map(log => (
@@ -170,7 +164,6 @@ export default function AgentPanel({ shipments, reputations, logs, onAddLog, onC
         )}
       </div>
 
-      {/* Summary footer */}
       <div className="border-t border-[var(--border)] p-3 flex items-center justify-between text-xs text-[var(--subtle)]">
         <span>{logs.filter(l => l.type === 'flag').length} flags · {logs.filter(l => l.type === 'suggestion').length} suggestions</span>
         <span className="tabular-nums">{logs.length} events</span>
