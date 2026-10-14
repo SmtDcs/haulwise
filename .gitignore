@@ -5,3 +5,5 @@ contracts/cache
 dist
 .env
 .env.local
+broadcast/*/*/dry-run/
+broadcast/*/*/run-[0-9]*.json
