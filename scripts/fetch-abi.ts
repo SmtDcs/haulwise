@@ -1,8 +1,7 @@
 /**
- * fetch-abi <address> [--network arc-testnet] — resolve a deployed contract's
+ * fetch-abi <address> [--network arc|arc-testnet] — resolve a deployed contract's
  * ABI from a Blockscout (Arcscan) explorer and write src/contracts/<Name>.json.
- * The full ABI stays in the file; stdout gets a compact summary only, to keep
- * it out of the agent's context. Runs in-sandbox under bun.
+ * The full ABI stays in the file; stdout gets a compact summary only.
  */
 
 import fs from 'node:fs';
@@ -19,6 +18,13 @@ export interface NetworkConfig {
 }
 
 export const NETWORKS: Record<string, NetworkConfig> = {
+  arc: {
+    chainId: 5042,
+    rpc: 'https://rpc.mainnet.arc.io',
+    explorerApiBase: 'https://explorer.arc.io/api',
+    explorerUrl: 'https://explorer.arc.io',
+    label: 'Arc',
+  },
   'arc-testnet': {
     chainId: 5042002,
     rpc: 'https://rpc.testnet.arc.io',
@@ -28,7 +34,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
   },
 };
 
-export const DEFAULT_NETWORK = 'arc-testnet';
+export const DEFAULT_NETWORK = 'arc';
 
 const PER_FETCH_TIMEOUT_MS = 3_000;
 const TOTAL_TIMEOUT_MS = 10_000;
@@ -341,7 +347,7 @@ export function parseArgs(argv: string[]): CliOptions {
   }
 
   if (!address) {
-    throw new Error('Usage: bun run fetch:abi <address> [--network arc-testnet]');
+    throw new Error('Usage: bun run fetch:abi <address> [--network arc|arc-testnet]');
   }
 
   return { address, network };
