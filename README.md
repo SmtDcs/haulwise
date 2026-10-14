@@ -5,6 +5,8 @@ freight rate in a contract, the carrier marks pickup and delivery, and the
 money moves when delivery is confirmed, when the confirmation window lapses, or
 when a dispute is decided.
 
+Live app: [haulwise-arc.vercel.app](https://haulwise-arc.vercel.app) (Arc mainnet).
+
 The escrow contract is named `CargoBill` (the project's working name). It was
 deployed under that name and is left unchanged so the deployed bytecode keeps
 matching the verified source.
