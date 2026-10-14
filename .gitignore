@@ -7,3 +7,4 @@ dist
 .env.local
 broadcast/*/*/dry-run/
 broadcast/*/*/run-[0-9]*.json
+.vercel
