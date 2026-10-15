@@ -106,6 +106,56 @@ USDC=0x3600000000000000000000000000000000000000 FEE_RECIPIENT=<addr> ARBITER=<ad
 Compiler settings in `foundry.toml` (solc 0.8.28, via-IR, 200 runs, `paris`) are
 the ones used for the mainnet deployment; changing them breaks verification.
 
+## Settlement agent
+
+`agent/` is a Node service that does a shipper's freight accounts-payable work on Haulwise. For every shipment the carrier marks delivered, it:
+
+1. Reads the carrier's invoice and proof of delivery (PDF or text).
+2. Runs a three-way match of escrow terms (the PO), invoice and POD: amount, payout wallet, PO reference, lane, POD signature and date against the on-chain pickup and delivery timestamps, duplicate invoice numbers, and carrier dispute history.
+3. Applies the company's spending policy, which covers per-shipment and rolling 24h auto-confirm limits, limits for new carriers, late-delivery escalation and blocked carriers.
+4. Takes one action: confirms delivery so escrow releases, opens a dispute with an evidence-based reason written on-chain, holds while a document is missing, or escalates to finance in the Agent tab.
+5. Raises an approval before the carrier's 48h auto-release window closes if documents are still incomplete. On the receivables side, it calls `autoRelease` for carrier wallets it manages once the window has passed.
+
+The model plans and writes the rationale. Policy lives in `agent/src/policy.ts` and runs before any transaction is signed, so a prompt can't move money past a limit. `confirm_delivery` is only accepted after `reconcile` has returned a `confirm` verdict.
+
+Every decision is appended to `data/decisions.jsonl`. Each entry commits to the previous one with SHA-256, so an edited or deleted line shows up in `/api/status` (`ledger.ok`).
+
+```mermaid
+flowchart LR
+  C[Carrier] -- invoice + POD --> API[Agent API]
+  C -- markPickedUp / markDelivered --> E[(Haulwise escrow<br/>Arc, USDC)]
+  E -- shipments, timestamps, reputation --> W[Watcher]
+  API --> W
+  W --> P{Planner<br/>LLM tool-calling<br/>or rules}
+  P -- reconcile --> M[Three-way match]
+  M --> G[Policy gate]
+  G -- confirm --> E
+  G -- dispute + reason --> E
+  G -- needs approval --> UI[Agent tab<br/>finance approves]
+  UI -- approve --> E
+  G --> L[(Hash-chained<br/>decision log)]
+  S[Circle developer-controlled wallets<br/>or local keys] -. signs .-> E
+  X[CCTP V2<br/>Base / Eth / Arb Sepolia] -. funds treasury .-> S
+```
+
+**Circle stack.** Each managed account is either a Circle developer-controlled wallet on `ARC-TESTNET`, with keys held in Circle's MPC and transactions sent through `createContractExecutionTransaction`, or a local key as a fallback. Circle's faucet API (`scripts/circle-faucet.ts`) funds the wallets. The treasury can be topped up from other testnets over CCTP V2 (`scripts/cctp-fund.ts`): burn on the source chain, get an Iris attestation, then `receiveMessage` on Arc. All settlement is in USDC on Arc, which also pays for gas.
+
+**Planner.** Set `OPENAI_API_KEY`, `XAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` to use an LLM with tool calling. The model reads the raw documents, extracts the fields, calls `reconcile`, and picks an action. Without a key, a deterministic rules planner runs the same tools in a fixed order. Each log entry records which planner made the call.
+
+### Running the agent
+
+```bash
+cd agent && npm install
+npm run wallets:init                     # Circle wallets if CIRCLE_API_KEY + CIRCLE_ENTITY_SECRET are set, local keys otherwise
+HAULWISE_ESCROW=0x... npm run traction -- --count 20   # fund, create, pick up, deliver, file documents, run the agent
+HAULWISE_ESCROW=0x... AGENT_ADMIN_TOKEN=... npm start  # API on :8787, ticks every 30s
+npm test                                 # policy, matching, extraction, ledger tests
+```
+
+Then build the front end with `VITE_AGENT_URL=http://localhost:8787 VITE_CHAIN=arcTestnet` and open the **Agent** tab.
+
+API: `GET /api/status`, `GET /api/decisions`, `GET /api/approvals`, `POST /api/approvals/:id` (`{"decision":"approve"|"reject"}`), `PUT /api/policy`, `POST /api/documents/:shipmentId?kind=invoice|pod&filename=...` (raw body). Write endpoints need `Authorization: Bearer $AGENT_ADMIN_TOKEN`.
+
 ## Tests
 
 `forge test` runs 81 tests in two suites: 80 unit tests for state transitions, deadline boundaries, fee splits,
@@ -141,6 +191,8 @@ contracts/test/CargoBill.t.sol       unit + invariant tests
 src/                                 React app
 scripts/fetch-abi.ts                 pull a verified ABI from an Arc explorer
 broadcast/                           mainnet deployment record
+agent/                               settlement agent (Node/TS): planner, policy, matching, ledger, API
+agent/scripts/                       wallets, Circle faucet, CCTP funding, testnet traction runner
 ```
 
 ## License
