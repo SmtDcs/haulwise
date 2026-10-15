@@ -8,3 +8,4 @@ dist
 broadcast/*/*/dry-run/
 broadcast/*/*/run-[0-9]*.json
 .vercel
+agent/data/

@@ -1,0 +1,26 @@
+{
+  "name": "haulwise-settlement-agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "tick": "tsx src/cli.ts tick",
+    "traction": "tsx scripts/traction.ts",
+    "wallets:init": "tsx scripts/init-wallets.ts",
+    "circle:setup": "tsx scripts/circle-setup.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.8.1",
+    "unpdf": "^1.8.1",
+    "viem": "^2.57.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}
