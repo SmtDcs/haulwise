@@ -1,0 +1,13 @@
+Carrier 3 — FREIGHT INVOICE
+Invoice No: INV-202601002
+Invoice Date: 2026-10-15
+Bill To: Shipper B (electronics distributor, Istanbul)
+PO: PO-24156
+Origin: Istanbul, TR
+Destination: Ankara, TR
+Cargo: 22t consumer electronics
+Line haul .................. 1.47
+Fuel surcharge ............. 0.13
+Total Due: USDC 1.60
+Pay To Wallet: 0x9634cde04646bbe469cdf838b76b71f957b012ae
+Terms: on delivery via Haulwise escrow (Arc)

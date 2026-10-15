@@ -1,0 +1,13 @@
+Carrier 1 — FREIGHT INVOICE
+Invoice No: INV-202601021
+Invoice Date: 2026-10-15
+Bill To: Shipper B (electronics distributor, Istanbul)
+PO: PO-24443
+Origin: Konya, TR
+Destination: Izmir, TR
+Cargo: 24t flour
+Line haul .................. 1.10
+Fuel surcharge ............. 0.10
+Total Due: USDC 1.20
+Pay To Wallet: 0xbbd9b2d3698c46a97bfcae391b1de9745072a391
+Terms: on delivery via Haulwise escrow (Arc)

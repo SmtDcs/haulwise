@@ -1,0 +1,13 @@
+Carrier 1 — FREIGHT INVOICE
+Invoice No: INV-202601015
+Invoice Date: 2026-10-15
+Bill To: Shipper A (textile exporter, Bursa)
+PO: PO-24325
+Origin: Manisa, TR
+Destination: Thessaloniki, GR
+Cargo: 20 pallets white goods
+Line haul .................. 1.32
+Fuel surcharge ............. 0.12
+Total Due: USDC 1.44
+Pay To Wallet: 0xbbd9b2d3698c46a97bfcae391b1de9745072a391
+Terms: on delivery via Haulwise escrow (Arc)

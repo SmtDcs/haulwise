@@ -64,6 +64,8 @@ interface WalletRecord { label: string; role: Role; address: Address; privateKey
 export interface WalletsFile { circleWalletSetId?: string; wallets: WalletRecord[] }
 
 export function readWalletsFile(path = cfg.walletsFile): WalletsFile {
+  // Hosted deploys pass the wallet registry (addresses + Circle wallet ids, no keys) as JSON.
+  if (!existsSync(path) && process.env.AGENT_WALLETS_JSON) return JSON.parse(process.env.AGENT_WALLETS_JSON);
   if (!existsSync(path)) return { wallets: [] };
   return JSON.parse(readFileSync(path, 'utf8'));
 }

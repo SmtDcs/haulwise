@@ -1,0 +1,1422 @@
+{
+  "policy": {
+    "autoConfirmMaxUSDC": 3,
+    "dailyAutoConfirmCapUSDC": 60,
+    "amountTolerance": 0,
+    "maxLateHours": 12,
+    "newCarrierMinCompleted": 1,
+    "newCarrierMaxUSDC": 3,
+    "autoDispute": true,
+    "triggerAutoRelease": true,
+    "blockedCarriers": []
+  },
+  "seenInvoices": {
+    "cf99890f6b13b766": 1,
+    "c59839057853d970": 2,
+    "90f63df95caf779f": 3,
+    "2fc85610f10afe18": 4,
+    "b58616b43be7cb47": 5,
+    "fe8204daddefc60b": 6,
+    "156822921765e8c4": 7,
+    "f334ae069192b579": 8,
+    "3a878d833dda80d5": 9,
+    "876badccc3b7b2e0": 11,
+    "e85f10c726f8052a": 12,
+    "51b398bbd9f5c3d4": 13,
+    "3ac79ce681ca68e6": 14,
+    "319adca12006ef93": 15,
+    "b683aa04165b1995": 16,
+    "c9b936b7e3267b24": 17,
+    "113634e9cfe01317": 18,
+    "a177e00630a3b289": 19,
+    "d9543228949de5c2": 20,
+    "68e581c63ce62e3c": 21,
+    "7da26fcd486a2901": 22,
+    "8ed438e178b18f08": 23
+  },
+  "approvals": [
+    {
+      "id": "apr-6-mv94rlo0",
+      "shipmentId": 6,
+      "action": "confirm",
+      "amountUSDC": 4.5,
+      "reasons": [
+        "Amount 4.5 USDC is above the 3 USDC auto-confirm limit"
+      ],
+      "agentRecommendation": "Three-way match is clean: invoice INV-202601006 for 4.50 USDC matches escrow, payee wallet matches the carrier, PO-24208 and lane Kayseri->Istanbul match, POD signed by the Istanbul DC warehouse lead on 2026-10-15, and delivery was on time. Only blocker is the 4.5 USDC amount exceeding the 3 USDC auto-confirm limit; recommend approval to release escrow.",
+      "status": "pending",
+      "createdAt": 1792044064368
+    },
+    {
+      "id": "apr-20-mv94t7v8",
+      "shipmentId": 20,
+      "action": "confirm",
+      "amountUSDC": 4.5,
+      "reasons": [
+        "Amount 4.5 USDC is above the 3 USDC auto-confirm limit"
+      ],
+      "agentRecommendation": "Three-way match is clean: invoice INV-202601020 for 4.50 USDC matches escrow, payee wallet matches the carrier, PO-24390 and lane Gebze->Bucharest match, and the POD is signed and dated on time. Only blocker is the 4.50 USDC amount exceeding the 3 USDC auto-confirm limit, so release requires finance approval.",
+      "status": "pending",
+      "createdAt": 1792044139796
+    }
+  ],
+  "reconciled": {
+    "1": {
+      "fields": {
+        "invoiceNumber": "INV-202601001",
+        "amountUSDC": 0.32,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24143",
+        "origin": "Bursa, TR",
+        "destination": "Hamburg, DE",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Hamburg DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.32 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24143"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Bursa, TR -> Hamburg, DE"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Hamburg DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044034659
+    },
+    "2": {
+      "fields": {
+        "invoiceNumber": "INV-202601002",
+        "amountUSDC": 1.6,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24156",
+        "origin": "Istanbul, TR",
+        "destination": "Ankara, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Ankara DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.6 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24156"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Ankara, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Ankara DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044040758
+    },
+    "3": {
+      "fields": {
+        "invoiceNumber": "INV-202601003",
+        "invoiceDate": "2026-10-15",
+        "amountUSDC": 1.2,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24169",
+        "origin": "Izmir, TR",
+        "destination": "Mersin, TR",
+        "podSignedBy": "Warehouse lead, Mersin DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.2 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24169"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Izmir, TR -> Mersin, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Mersin DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044046037
+    },
+    "4": {
+      "fields": {
+        "invoiceNumber": "INV-202601004",
+        "amountUSDC": 0.94,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24182",
+        "origin": "Gebze, TR",
+        "destination": "Bucharest, RO",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Bucharest DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "fail",
+          "detail": "Invoice bills 0.94 USDC, escrow holds 0.8 USDC"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24182"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Gebze, TR -> Bucharest, RO"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Bucharest DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "amount: Invoice bills 0.94 USDC, escrow holds 0.8 USDC"
+        ]
+      },
+      "at": 1792044052559
+    },
+    "5": {
+      "fields": {
+        "invoiceNumber": "INV-202601005",
+        "amountUSDC": 0.4,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24195",
+        "origin": "Istanbul, TR",
+        "destination": "Sofia, BG",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Sofia DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.4 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24195"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Sofia, BG"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Sofia DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044057847
+    },
+    "6": {
+      "fields": {
+        "invoiceNumber": "INV-202601006",
+        "amountUSDC": 4.5,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24208",
+        "origin": "Kayseri, TR",
+        "destination": "Istanbul, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Istanbul DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "4.5 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24208"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Kayseri, TR -> Istanbul, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Istanbul DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "needs_approval",
+        "reasons": [
+          "Amount 4.5 USDC is above the 3 USDC auto-confirm limit"
+        ]
+      },
+      "at": 1792044062934
+    },
+    "7": {
+      "fields": {
+        "invoiceNumber": "INV-202601007",
+        "amountUSDC": 1.28,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24221",
+        "origin": "Manisa, TR",
+        "destination": "Thessaloniki, GR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Thessaloniki DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.28 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24221"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Manisa, TR -> Thessaloniki, GR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Thessaloniki DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044066077
+    },
+    "8": {
+      "fields": {
+        "invoiceNumber": "INV-202601008",
+        "amountUSDC": 0.88,
+        "payee": "0x9b1f6C4e3A2d5E7f8B0a1C2D3e4F5a6B7c8D9e0F",
+        "poRef": "PO-24234",
+        "origin": "Konya, TR",
+        "destination": "Izmir, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Izmir DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.88 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "fail",
+          "detail": "Invoice pays to 0x9b1f…9e0F, escrow carrier is 0x9634…12ae"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24234"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Konya, TR -> Izmir, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Izmir DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "payee: Invoice pays to 0x9b1f…9e0F, escrow carrier is 0x9634…12ae"
+        ]
+      },
+      "at": 1792044071300
+    },
+    "9": {
+      "fields": {
+        "invoiceNumber": "INV-202601009",
+        "invoiceDate": "2026-10-15",
+        "amountUSDC": 0.48,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24247",
+        "origin": "Bursa, TR",
+        "destination": "Hamburg, DE",
+        "podSignedBy": "Warehouse lead, Hamburg DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.48 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24247"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Bursa, TR -> Hamburg, DE"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Hamburg DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044078131
+    },
+    "10": {
+      "fields": {
+        "invoiceNumber": "INV-202601007",
+        "amountUSDC": 1.76,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24260",
+        "origin": "Istanbul, TR",
+        "destination": "Ankara, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Ankara DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.76 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24260"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Ankara, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Ankara DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        },
+        {
+          "check": "duplicate",
+          "severity": "fail",
+          "detail": "Invoice INV-202601007 was already presented on shipment #7"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "duplicate: Invoice INV-202601007 was already presented on shipment #7"
+        ]
+      },
+      "at": 1792044084295
+    },
+    "11": {
+      "fields": {
+        "invoiceNumber": "INV-202601011",
+        "amountUSDC": 1.36,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24273",
+        "origin": "Izmir, TR",
+        "destination": "Mersin, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Mersin DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.36 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24273"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Izmir, TR -> Mersin, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Mersin DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044090400
+    },
+    "12": {
+      "fields": {
+        "invoiceNumber": "INV-202601012",
+        "amountUSDC": 0.96,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24286",
+        "origin": "Gebze, TR",
+        "destination": "Bucharest, RO",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "",
+        "podDate": ""
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.96 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24286"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Gebze, TR -> Bucharest, RO"
+        },
+        {
+          "check": "pod",
+          "severity": "fail",
+          "detail": "No proof of delivery on file"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "hold",
+        "reasons": [
+          "pod: No proof of delivery on file"
+        ]
+      },
+      "at": 1792044096407
+    },
+    "13": {
+      "fields": {
+        "invoiceNumber": "INV-202601013",
+        "amountUSDC": 0.56,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24299",
+        "origin": "Istanbul, TR",
+        "destination": "Sofia, BG",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Sofia DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.56 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24299"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Sofia, BG"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Sofia DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044099286
+    },
+    "14": {
+      "fields": {
+        "invoiceNumber": "INV-202601014",
+        "invoiceDate": "2026-10-15",
+        "poRef": "PO-24312",
+        "origin": "Istanbul, TR",
+        "destination": "Tbilisi, GE",
+        "amountUSDC": 1.84,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "podSignedBy": "Warehouse lead, Istanbul DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.84 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24312"
+        },
+        {
+          "check": "lane",
+          "severity": "fail",
+          "detail": "Invoice lane Istanbul, TR -> Tbilisi, GE, booked Kayseri, TR -> Istanbul, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Istanbul DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "lane: Invoice lane Istanbul, TR -> Tbilisi, GE, booked Kayseri, TR -> Istanbul, TR"
+        ]
+      },
+      "at": 1792044107737
+    },
+    "15": {
+      "fields": {
+        "invoiceNumber": "INV-202601015",
+        "amountUSDC": 1.44,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24325",
+        "origin": "Manisa, TR",
+        "destination": "Thessaloniki, GR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Thessaloniki DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.44 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24325"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Manisa, TR -> Thessaloniki, GR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Thessaloniki DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044113079
+    },
+    "16": {
+      "fields": {
+        "invoiceNumber": "INV-202601016",
+        "amountUSDC": 1.04,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24338",
+        "origin": "Konya, TR",
+        "destination": "Izmir, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Izmir DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.04 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24338"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Konya, TR -> Izmir, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Izmir DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044118005
+    },
+    "17": {
+      "fields": {
+        "invoiceNumber": "INV-202601017",
+        "amountUSDC": 0.64,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24351",
+        "origin": "Bursa, TR",
+        "destination": "Hamburg, DE",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Hamburg DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.64 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24351"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Bursa, TR -> Hamburg, DE"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Hamburg DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044122911
+    },
+    "18": {
+      "fields": {
+        "invoiceNumber": "INV-202601018",
+        "invoiceDate": "2026-10-15",
+        "amountUSDC": 2.27,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24364",
+        "origin": "Istanbul, TR",
+        "destination": "Ankara, TR",
+        "podSignedBy": "Warehouse lead, Ankara DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "fail",
+          "detail": "Invoice bills 2.27 USDC, escrow holds 1.92 USDC"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24364"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Ankara, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Ankara DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "amount: Invoice bills 2.27 USDC, escrow holds 1.92 USDC"
+        ]
+      },
+      "at": 1792044127808
+    },
+    "19": {
+      "fields": {
+        "invoiceNumber": "INV-202601019",
+        "invoiceDate": "2026-10-15",
+        "amountUSDC": 1.52,
+        "payee": "0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478",
+        "poRef": "PO-24377",
+        "origin": "Izmir, TR",
+        "destination": "Mersin, TR",
+        "podSignedBy": "Warehouse lead, Mersin DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.52 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24377"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Izmir, TR -> Mersin, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Mersin DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044133227
+    },
+    "20": {
+      "fields": {
+        "invoiceNumber": "INV-202601020",
+        "amountUSDC": 4.5,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24390",
+        "origin": "Gebze, TR",
+        "destination": "Bucharest, RO",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Bucharest DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "4.5 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24390"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Gebze, TR -> Bucharest, RO"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Bucharest DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "needs_approval",
+        "reasons": [
+          "Amount 4.5 USDC is above the 3 USDC auto-confirm limit"
+        ]
+      },
+      "at": 1792044138197
+    },
+    "21": {
+      "fields": {
+        "invoiceNumber": "INV-202601021",
+        "amountUSDC": 0.72,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24403",
+        "origin": "Istanbul, TR",
+        "destination": "Sofia, BG",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Sofia DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.72 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24403"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Istanbul, TR -> Sofia, BG"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Sofia DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044141351
+    },
+    "22": {
+      "fields": {
+        "invoiceNumber": "INV-202601022",
+        "amountUSDC": 0.32,
+        "payee": "0x9b1f6C4e3A2d5E7f8B0a1C2D3e4F5a6B7c8D9e0F",
+        "poRef": "PO-24417",
+        "origin": "Kayseri, TR",
+        "destination": "Istanbul, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Istanbul DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "0.32 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "fail",
+          "detail": "Invoice pays to 0x9b1f…9e0F, escrow carrier is 0x5BC8…c478"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24417"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Kayseri, TR -> Istanbul, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Istanbul DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "payee: Invoice pays to 0x9b1f…9e0F, escrow carrier is 0x5BC8…c478"
+        ]
+      },
+      "at": 1792044146785
+    },
+    "23": {
+      "fields": {
+        "invoiceNumber": "INV-202601023",
+        "amountUSDC": 1.6,
+        "payee": "0x9634cde04646bbe469cdf838b76b71f957b012ae",
+        "poRef": "PO-24430",
+        "origin": "Manisa, TR",
+        "destination": "Thessaloniki, GR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Thessaloniki DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.6 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24430"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Manisa, TR -> Thessaloniki, GR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Thessaloniki DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        }
+      ],
+      "verdict": {
+        "kind": "confirm"
+      },
+      "at": 1792044153865
+    },
+    "24": {
+      "fields": {
+        "invoiceNumber": "INV-202601021",
+        "amountUSDC": 1.2,
+        "payee": "0xbbd9b2d3698c46a97bfcae391b1de9745072a391",
+        "poRef": "PO-24443",
+        "origin": "Konya, TR",
+        "destination": "Izmir, TR",
+        "invoiceDate": "2026-10-15",
+        "podSignedBy": "Warehouse lead, Izmir DC",
+        "podDate": "2026-10-15"
+      },
+      "findings": [
+        {
+          "check": "amount",
+          "severity": "ok",
+          "detail": "1.2 USDC matches escrow"
+        },
+        {
+          "check": "payee",
+          "severity": "ok",
+          "detail": "Payout wallet matches carrier on escrow"
+        },
+        {
+          "check": "po_ref",
+          "severity": "ok",
+          "detail": "PO PO-24443"
+        },
+        {
+          "check": "lane",
+          "severity": "ok",
+          "detail": "Konya, TR -> Izmir, TR"
+        },
+        {
+          "check": "pod",
+          "severity": "ok",
+          "detail": "POD signed by Warehouse lead, Izmir DC"
+        },
+        {
+          "check": "pod_date",
+          "severity": "ok",
+          "detail": "POD date 2026-10-15 consistent with chain"
+        },
+        {
+          "check": "on_time",
+          "severity": "ok",
+          "detail": "Delivered before deadline"
+        },
+        {
+          "check": "duplicate",
+          "severity": "fail",
+          "detail": "Invoice INV-202601021 was already presented on shipment #21"
+        }
+      ],
+      "verdict": {
+        "kind": "dispute",
+        "reasons": [
+          "duplicate: Invoice INV-202601021 was already presented on shipment #21"
+        ]
+      },
+      "at": 1792044159167
+    }
+  },
+  "handled": {
+    "1": "confirmed",
+    "2": "confirmed",
+    "3": "confirmed",
+    "4": "disputed",
+    "5": "confirmed",
+    "6": "awaiting_approval",
+    "7": "confirmed",
+    "8": "disputed",
+    "9": "confirmed",
+    "10": "disputed",
+    "11": "confirmed",
+    "12": "waiting_pod",
+    "13": "confirmed",
+    "14": "disputed",
+    "15": "confirmed",
+    "16": "confirmed",
+    "17": "confirmed",
+    "18": "disputed",
+    "19": "confirmed",
+    "20": "awaiting_approval",
+    "21": "confirmed",
+    "22": "disputed",
+    "23": "confirmed",
+    "24": "disputed"
+  }
+}

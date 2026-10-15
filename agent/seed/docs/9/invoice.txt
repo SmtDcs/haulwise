@@ -1,0 +1,13 @@
+Carrier 1 — FREIGHT INVOICE
+Invoice No: INV-202601009
+Invoice Date: 2026-10-15
+Bill To: Shipper A (textile exporter, Bursa)
+PO: PO-24247
+Origin: Bursa, TR
+Destination: Hamburg, DE
+Cargo: 18 pallets cotton fabric
+Line haul .................. 0.44
+Fuel surcharge ............. 0.04
+Total Due: USDC 0.48
+Pay To Wallet: 0xbbd9b2d3698c46a97bfcae391b1de9745072a391
+Terms: on delivery via Haulwise escrow (Arc)

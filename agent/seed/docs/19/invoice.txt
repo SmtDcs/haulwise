@@ -1,0 +1,13 @@
+Carrier 2 — FREIGHT INVOICE
+Invoice No: INV-202601019
+Invoice Date: 2026-10-15
+Bill To: Shipper A (textile exporter, Bursa)
+PO: PO-24377
+Origin: Izmir, TR
+Destination: Mersin, TR
+Cargo: 40ft container dried fruit
+Line haul .................. 1.40
+Fuel surcharge ............. 0.12
+Total Due: USDC 1.52
+Pay To Wallet: 0x5bc87f245bbf15c5ef6796b8e5f6e62aa9f4c478
+Terms: on delivery via Haulwise escrow (Arc)

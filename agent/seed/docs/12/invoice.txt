@@ -1,0 +1,13 @@
+Carrier 1 — FREIGHT INVOICE
+Invoice No: INV-202601012
+Invoice Date: 2026-10-15
+Bill To: Shipper B (electronics distributor, Istanbul)
+PO: PO-24286
+Origin: Gebze, TR
+Destination: Bucharest, RO
+Cargo: 12 pallets auto parts
+Line haul .................. 0.88
+Fuel surcharge ............. 0.08
+Total Due: USDC 0.96
+Pay To Wallet: 0xbbd9b2d3698c46a97bfcae391b1de9745072a391
+Terms: on delivery via Haulwise escrow (Arc)

@@ -1,0 +1,13 @@
+Carrier 3 — FREIGHT INVOICE
+Invoice No: INV-202601014
+Invoice Date: 2026-10-15
+Bill To: Shipper B (electronics distributor, Istanbul)
+PO: PO-24312
+Origin: Istanbul, TR
+Destination: Tbilisi, GE
+Cargo: 16t furniture
+Line haul .................. 1.69
+Fuel surcharge ............. 0.15
+Total Due: USDC 1.84
+Pay To Wallet: 0x9634cde04646bbe469cdf838b76b71f957b012ae
+Terms: on delivery via Haulwise escrow (Arc)

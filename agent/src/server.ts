@@ -12,11 +12,19 @@ async function body(req: IncomingMessage): Promise<Buffer> {
   for await (const c of req) chunks.push(c as Buffer);
   return Buffer.concat(chunks);
 }
+const ORIGINS = (process.env.ALLOWED_ORIGINS ?? '*').split(',').map(s => s.trim());
+let reqOrigin = '';
 function send(res: ServerResponse, code: number, data: unknown) {
-  res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' });
+  const allow = ORIGINS.includes('*') ? '*' : ORIGINS.includes(reqOrigin) ? reqOrigin : ORIGINS[0];
+  res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': allow, vary: 'origin', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' });
   res.end(JSON.stringify(data, (_, v) => (typeof v === 'bigint' ? v.toString() : v)));
 }
 const authorized = (req: IncomingMessage) => !TOKEN || req.headers.authorization === `Bearer ${TOKEN}`;
+
+// First boot on an empty volume: start from the committed testnet run instead of a blank log.
+import { cpSync, existsSync as exists } from 'node:fs';
+const seedDir = new URL('../seed', import.meta.url).pathname;
+if (!exists(`${cfg.dataDir}/decisions.jsonl`) && exists(seedDir)) { cpSync(seedDir, cfg.dataDir, { recursive: true }); console.log('seeded data dir from seed/'); }
 
 const agent = new SettlementAgent(await loadWallets());
 console.log(`Haulwise Settlement Agent · escrow ${cfg.escrow} · planner ${agent.planner} · ${agent.wallets.length} wallets`);
@@ -45,6 +53,7 @@ function metrics() {
 
 createServer(async (req, res) => {
   try {
+    reqOrigin = String(req.headers.origin ?? '');
     const url = new URL(req.url ?? '/', 'http://x');
     if (req.method === 'OPTIONS') return send(res, 204, {});
     if (req.method === 'GET' && url.pathname === '/api/status')
