@@ -22,9 +22,10 @@ function send(res: ServerResponse, code: number, data: unknown) {
 const authorized = (req: IncomingMessage) => !TOKEN || req.headers.authorization === `Bearer ${TOKEN}`;
 
 // First boot on an empty volume: start from the committed testnet run instead of a blank log.
-import { cpSync, existsSync as exists } from 'node:fs';
+import { cpSync, existsSync as exists, statSync } from 'node:fs';
 const seedDir = new URL('../seed', import.meta.url).pathname;
-if (!exists(`${cfg.dataDir}/decisions.jsonl`) && exists(seedDir)) { cpSync(seedDir, cfg.dataDir, { recursive: true }); console.log('seeded data dir from seed/'); }
+const logFile = `${cfg.dataDir}/decisions.jsonl`;
+if ((!exists(logFile) || statSync(logFile).size === 0) && exists(seedDir)) { cpSync(seedDir, cfg.dataDir, { recursive: true }); cpSync(`${seedDir}/decisions.log`, logFile); console.log('seeded data dir from seed/'); }
 
 const agent = new SettlementAgent(await loadWallets());
 console.log(`Haulwise Settlement Agent · escrow ${cfg.escrow} · planner ${agent.planner} · ${agent.wallets.length} wallets`);

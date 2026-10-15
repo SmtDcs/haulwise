@@ -6,6 +6,7 @@ money moves when delivery is confirmed, when the confirmation window lapses, or
 when a dispute is decided.
 
 Live app: [haulwise-arc.vercel.app](https://haulwise-arc.vercel.app) (Arc mainnet).
+Settlement agent (Arc testnet, escrow 0x8975c51D4891C8aa44B6f4C6D377ca6081866E79): [status](https://haulwise-agent-production.up.railway.app/api/status) · [decision log](https://haulwise-agent-production.up.railway.app/api/decisions), shown in the app's Agent tab.
 
 The escrow contract is named `CargoBill` (the project's working name). It was
 deployed under that name and is left unchanged so the deployed bytecode keeps

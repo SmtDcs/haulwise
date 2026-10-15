@@ -5,7 +5,8 @@
 **One-liner:** An accounts-payable agent for freight. It reads carrier invoices and proofs of delivery, matches them against USDC escrow on Arc, then pays, disputes, or escalates within a spending policy enforced in code.
 
 **Repo:** https://github.com/SmtDcs/haulwise
-**Live app:** https://haulwise-arc.vercel.app (Agent tab: needs a hosted agent URL, see TODO)
+**Live app:** https://haulwise-arc.vercel.app (Agent tab reads the hosted agent)
+**Agent API:** https://haulwise-agent-production.up.railway.app/api/status (decision log: https://haulwise-agent-production.up.railway.app/api/decisions)
 **Video:** TODO (Loom/YouTube, under 3 min)
 
 **RFB:** 2 (AP/AR automation) and 3 (contractor/vendor network: milestone escrow and reputation).
