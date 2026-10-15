@@ -43,7 +43,7 @@ The agent decides when to pay and explains why. The limit sits somewhere the age
 
 ## Before Tameion vs now (the delta)
 - Before (Oct 14): an escrow contract on Arc mainnet and a React app with shipper, carrier and arbiter views, plus one mainnet test shipment.
-- During Tameion: the Settlement Agent service (matching, policy, LLM planner, ledger, API), Circle wallet integration, CCTP funding, the testnet deployment with scripted traffic, the Agent tab, and 23 agent tests including a live-model test with a prompt-injection invoice.
+- During Tameion: the Settlement Agent service (matching, policy, LLM planner, ledger, API), Circle wallet integration, CCTP funding, the testnet deployment with scripted traffic, the Agent tab, and 22 agent tests including a live-model test with a prompt-injection invoice.
 
 ## After the event
 Next: a carrier-side agent (invoice factoring against escrow), EURC for EU lanes, and Gateway for a unified balance across shipper entities.
