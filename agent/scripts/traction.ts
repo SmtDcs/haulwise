@@ -19,6 +19,7 @@ import { SettlementAgent } from '../src/agent.js';
 
 const arg = (k: string, d?: string) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const COUNT = Number(arg('count', '12'));
+const SCALE = Number(arg('scale', '1')); // shrink clean-load amounts when faucet funds are tight
 const RUN_AGENT = !process.argv.includes('--no-agent');
 if (!cfg.escrow) throw new Error('HAULWISE_ESCROW not set');
 
@@ -30,6 +31,11 @@ const LANES = [
 ];
 type Scenario = 'clean' | 'overbilled' | 'wrong_payee' | 'duplicate' | 'no_pod' | 'large' | 'wrong_lane';
 const MIX: Scenario[] = ['clean', 'clean', 'clean', 'overbilled', 'clean', 'large', 'clean', 'wrong_payee', 'clean', 'duplicate', 'clean', 'no_pod', 'clean', 'wrong_lane'];
+
+function amountFor(i: number) {
+  if (MIX[i % MIX.length] === 'large') return 4.5; // above the auto-confirm limit on purpose
+  return Number(((0.4 + ((i * 37) % 21) / 10) * SCALE).toFixed(2)); // 0.40 – 2.40 USDC at scale 1
+}
 
 const wallets = await loadWallets();
 const treasury = wallets.find(w => w.role === 'treasury')!;
@@ -48,8 +54,10 @@ if (!existsSync(stateFile))
 
 console.log(`treasury ${treasury.address} holds ${fmt(await bal(treasury.address))} USDC`);
 // 1. Treasury tops up shippers (escrow float) and carriers (gas, paid in USDC on Arc).
-const perShipper = parseUnits(arg('float', '15')!, 6);
-for (const s of shippers) { const have = await bal(s.address); if (have < perShipper) await call(treasury, cfg.usdc, erc20Abi, 'transfer', [s.address, perShipper - have]); }
+// Each shipper gets exactly the escrow float its loads in this run need, plus a little for gas.
+const need = shippers.map(() => 0.3);
+for (let i = 0; i < COUNT; i++) need[i % shippers.length] += amountFor(i);
+for (const [k, s] of shippers.entries()) { const want = parseUnits(need[k].toFixed(6), 6); const have = await bal(s.address); if (have < want) await call(treasury, cfg.usdc, erc20Abi, 'transfer', [s.address, want - have]); }
 for (const c of carriers) { const have = await bal(c.address); if (have < parseUnits('0.5', 6)) await call(treasury, cfg.usdc, erc20Abi, 'transfer', [c.address, parseUnits('0.5', 6)]); }
 for (const s of shippers) await call(s, cfg.usdc, erc20Abi, 'approve', [cfg.escrow, parseUnits('1000000', 6)]);
 
@@ -62,7 +70,7 @@ for (let i = 0; i < COUNT; i++) {
   const shipper = shippers[i % shippers.length];
   const carrier = carriers[(i * 7 + 1) % carriers.length];
   const [origin, destination, cargo] = LANES[i % LANES.length];
-  const amount = scenario === 'large' ? 4.5 : Number((0.4 + ((i * 37) % 21) / 10).toFixed(2)); // 0.40 – 2.40 USDC
+  const amount = amountFor(i);
   const po = `PO-${(24100 + i * 13 + Math.floor(Date.now() / 1e6) % 1000)}`;
   const now = await chainNow();
   const hash = await call(shipper, cfg.escrow, escrowAbi, 'createShipment', [carrier.address, parseUnits(String(amount), 6), BigInt(now + 3600), BigInt(now + 6 * 3600), encodeTerms({ poRef: po, origin, destination, cargo })]);
