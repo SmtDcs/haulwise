@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "tsx src/server.ts",
-    "tick": "tsx src/cli.ts tick",
-    "traction": "tsx scripts/traction.ts",
-    "wallets:init": "tsx scripts/init-wallets.ts",
-    "circle:setup": "tsx scripts/circle-setup.ts",
+    "start": "tsx --env-file-if-exists=.env src/server.ts",
+    "tick": "tsx --env-file-if-exists=.env src/cli.ts tick",
+    "traction": "tsx --env-file-if-exists=.env scripts/traction.ts",
+    "wallets:init": "tsx --env-file-if-exists=.env scripts/init-wallets.ts",
+    "circle:setup": "tsx --env-file-if-exists=.env scripts/circle-setup.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
