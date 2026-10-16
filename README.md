@@ -12,6 +12,47 @@ The escrow contract is named `CargoBill` (the project's working name). It was
 deployed under that name and is left unchanged so the deployed bytecode keeps
 matching the verified source.
 
+## Built in Arc Studio
+
+- Studio project: https://studio.arc.io/app/3c83a2a7-fed9-4d26-af88-ce8adde0ea6f
+- The contract (`contracts/CargoBill.sol`), the 81 Foundry tests and the React app were written in Studio. The Studio AI agent updated the app to match the current contract. The repo starts from Studio's export (commit `3a5698d` "Initial commit from Studio").
+- Studio one-click testnet deploy: [`0x4b009f1d98d45736f379a1140e1b2b8a15808dd1`](https://explorer.testnet.arc.io/address/0x4b009f1d98d45736f379a1140e1b2b8a15808dd1)
+- Studio doesn't deploy to mainnet, so the same contract went to Arc mainnet (chain 5042) with Foundry: [`0xc63caf75a63b53Cf0d30f599766824223ecb653E`](https://explorer.arc.io/address/0xc63caf75a63b53Cf0d30f599766824223ecb653E), using native USDC `0x3600000000000000000000000000000000000000`.
+- Walkthrough video: https://github.com/SmtDcs/haulwise/releases/download/arc-studio-demo/haulwise-arcstudio.mp4
+
+### Mainnet shipments (16 Oct 2026, real USDC)
+
+| Shipment | Amount | Path | Result |
+|---|---|---|---|
+| #2 | 0.10 USDC | create, pickup, deliver, confirm | carrier paid (0.5% fee) |
+| #3 | 0.15 USDC | create, pickup, deliver, confirm | carrier paid (0.5% fee) |
+| #4 | 0.20 USDC | deliver, dispute, arbiter resolves 80/20 | 0.16 to carrier, 0.04 back to shipper |
+| #5 | 0.12 USDC | delivered, shipper silent | auto-release opens 48h after delivery |
+
+| Shipment | Step | Tx |
+|---|---|---|
+| #2 | approve | [0x95a0c7f10a…](https://explorer.arc.io/tx/0x95a0c7f10ab764e976e045e16d7636b4f951c947000cb2418d9503aa067784ef) |
+| #2 | create | [0xbacd9450a7…](https://explorer.arc.io/tx/0xbacd9450a7d51ebf08ef0c58428b49d9dce523987516e797a9246536fc0bf8de) |
+| #2 | pickup | [0x1225b4029c…](https://explorer.arc.io/tx/0x1225b4029c621494f7ebdc54a42fc1388c875ab1d2fba12b21186de371e7097b) |
+| #2 | delivered | [0x5a34899def…](https://explorer.arc.io/tx/0x5a34899def86d1b23c19d1160794bc4ab605595c71c89cf54105115d97214cd0) |
+| #2 | confirm | [0x75daa109e5…](https://explorer.arc.io/tx/0x75daa109e54b64520f1bf8b53e590d140998b0c75965a4c95ac1df27ac6b1621) |
+| #3 | approve | [0xa5add78b2b…](https://explorer.arc.io/tx/0xa5add78b2bfc0bee629f0cd9d1ab3d0622924421db829204833b98c7c632bf05) |
+| #3 | create | [0x20a0c0cdf9…](https://explorer.arc.io/tx/0x20a0c0cdf9109a86955f5abe529ad8c88939bfd9355711accdaf546ade6235b1) |
+| #3 | pickup | [0xe1436a26ba…](https://explorer.arc.io/tx/0xe1436a26ba0fabeab31b0203f4bef7ff6084d474632850505ed503e4126d37f3) |
+| #3 | delivered | [0xf81a6a6420…](https://explorer.arc.io/tx/0xf81a6a6420f827a387b551207d4e3efc3a1403137762e589478afa6d6329da2b) |
+| #3 | confirm | [0x96bbb8ac4b…](https://explorer.arc.io/tx/0x96bbb8ac4b8c8624639da0626e6a9f56512cad8198076e0ba92bb94afb7c3ad2) |
+| #4 | approve | [0x3cb9891333…](https://explorer.arc.io/tx/0x3cb989133394fa681b6e301b734a3846fc1fb95647e7eda93806c62530f8bce1) |
+| #4 | create | [0xa598adaf0c…](https://explorer.arc.io/tx/0xa598adaf0cb01c5c25e628981f2f43770f28dddc006d6f099b166412c022fb60) |
+| #4 | pickup | [0x7cb7ef2db4…](https://explorer.arc.io/tx/0x7cb7ef2db461837e7796477de7c3a3786fe95d0d9d83d741f2e3739c09d418d0) |
+| #4 | delivered | [0x83bdfce44b…](https://explorer.arc.io/tx/0x83bdfce44b4e1c5a4645832c2a1b40ea93b34497251c2545c69fcf85d917af11) |
+| #4 | dispute | [0x5628a0547b…](https://explorer.arc.io/tx/0x5628a0547b25ee39e55816b808bd3fd11ad7a6b466d3c29c27f149a48791cf0f) |
+| #4 | resolve | [0x3f37d44483…](https://explorer.arc.io/tx/0x3f37d4448349bb8d41f96fd5b0119978c3de96f254be8cf22b42084cc48fd0cb) |
+| #5 | approve | [0x6095dca9ac…](https://explorer.arc.io/tx/0x6095dca9ac88a2007f77b0159556af8748e90a25c734cee6e8a47be416faef6a) |
+| #5 | create | [0x16c2d1f9c3…](https://explorer.arc.io/tx/0x16c2d1f9c360a85e8b9844181927b3912dcd68efbe4e63b06dcd2e38939d03c0) |
+| #5 | pickup | [0x3c8bb461ff…](https://explorer.arc.io/tx/0x3c8bb461ffe65638001e5aa4b94db55424738e240a5244ab5ea6d2d2f71fa2b7) |
+| #5 | delivered | [0x83e886abc8…](https://explorer.arc.io/tx/0x83e886abc8ff76192e6e6026e657fb69dc88535d07bd5796414ba392c84b6f19) |
+
+
 ## Why
 
 Small carriers in road freight are typically paid 30 to 90 days after
