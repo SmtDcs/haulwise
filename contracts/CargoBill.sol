@@ -98,7 +98,7 @@ contract CargoBill is ReentrancyGuard {
         uint256 pickupDeadline,
         uint256 deliveryDeadline,
         string calldata metadataURI
-    ) external nonReentrant returns (uint256 id) {
+    ) public nonReentrant returns (uint256 id) {
         require(carrier != address(0), "CargoBill: zero carrier");
         require(carrier != msg.sender, "CargoBill: carrier cannot be shipper");
         require(amountUSDC > 0, "CargoBill: zero amount");
@@ -181,6 +181,8 @@ contract CargoBill is ReentrancyGuard {
 
         emit DeliveryConfirmed(id);
         emit FundsReleased(id, s.carrier, net, fee);
+
+        _afterSettle(id, true);
     }
 
     function autoRelease(uint256 id) external nonReentrant {
@@ -203,6 +205,8 @@ contract CargoBill is ReentrancyGuard {
 
         emit AutoReleased(id, msg.sender);
         emit FundsReleased(id, s.carrier, net, fee);
+
+        _afterSettle(id, true);
     }
 
     function refundUndelivered(uint256 id) external nonReentrant {
@@ -221,6 +225,8 @@ contract CargoBill is ReentrancyGuard {
         IERC20(usdc).safeTransfer(s.shipper, s.amount);
 
         emit ShipmentRefunded(id);
+
+        _afterSettle(id, false);
     }
 
     function openDispute(uint256 id, string calldata reason) external {
@@ -265,6 +271,8 @@ contract CargoBill is ReentrancyGuard {
         }
 
         emit DisputeResolved(id, carrierBps, carrierAmount, shipperAmount);
+
+        _afterSettle(id, false);
     }
 
     function escalateTimeout(uint256 id) external nonReentrant {
@@ -290,6 +298,8 @@ contract CargoBill is ReentrancyGuard {
 
         emit DisputeResolved(id, 5000, carrierAmount, shipperAmount);
         emit DisputeTimeoutResolved(id, carrierAmount, shipperAmount);
+
+        _afterSettle(id, false);
     }
 
     function cancel(uint256 id) external nonReentrant {
@@ -304,6 +314,8 @@ contract CargoBill is ReentrancyGuard {
         IERC20(usdc).safeTransfer(s.shipper, s.amount);
 
         emit ShipmentCancelled(id);
+
+        _afterSettle(id, false);
     }
 
     function transferArbiter(address newArbiter) external onlyArbiter {
@@ -326,4 +338,8 @@ contract CargoBill is ReentrancyGuard {
     function getShipperDisputesLost(address shipper) external view returns (uint256) {
         return shipperDisputesLost[shipper];
     }
+
+    /// @dev Called once when a shipment reaches a final state. `released` is true only when the
+    /// carrier was paid in full after delivery (confirmDelivery / autoRelease). No-op in the base.
+    function _afterSettle(uint256 id, bool released) internal virtual {}
 }

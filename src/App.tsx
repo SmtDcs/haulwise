@@ -10,6 +10,7 @@ import CarrierView from './components/CarrierView';
 import AgentPanel from './components/AgentPanel';
 import ArbiterView from './components/ArbiterView';
 import SettlementAgentView from './components/SettlementAgentView';
+import GreenLaneView from './components/GreenLaneView';
 import NetworkGuard from './components/NetworkGuard';
 import { Package, ExternalLink } from 'lucide-react';
 import { NETWORK } from './config';
@@ -102,7 +103,7 @@ export default function App() {
           </div>
         )}
 
-        {activeRole === 'agent' ? <SettlementAgentView /> : (
+        {activeRole === 'green' ? <GreenLaneView /> : activeRole === 'agent' ? <SettlementAgentView /> : (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
           <div className="space-y-4">
             {!address && (

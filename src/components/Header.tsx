@@ -18,7 +18,7 @@ function Mark() {
 }
 
 export default function Header({ role, onRoleChange, showArbiter }: HeaderProps) {
-  const roles: Role[] = showArbiter ? ['shipper', 'carrier', 'arbiter', 'agent'] : ['shipper', 'carrier', 'agent'];
+  const roles: Role[] = showArbiter ? ['shipper', 'carrier', 'arbiter', 'agent', 'green'] : ['shipper', 'carrier', 'agent', 'green'];
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] backdrop-blur bg-[rgba(255,255,255,0.92)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
@@ -39,7 +39,7 @@ export default function Header({ role, onRoleChange, showArbiter }: HeaderProps)
                   role === r ? 'bg-[var(--surface)] text-[var(--ink)] shadow-sm border border-[var(--border)]' : 'text-[var(--muted)] hover:text-[var(--ink)] border border-transparent'
                 }`}
               >
-                {r}
+                {r === 'green' ? 'Green Lane' : r}
               </button>
             ))}
           </nav>

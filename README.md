@@ -53,6 +53,20 @@ matching the verified source.
 | #5 | delivered | [0x83e886abc8…](https://explorer.arc.io/tx/0x83e886abc8ff76192e6e6026e657fb69dc88535d07bd5796414ba392c84b6f19) |
 
 
+
+## Green Lane: emissions-aware freight payments (IEEE ClimateChain 2026)
+
+`HaulwiseGreenLane` extends the escrow with three features:
+- a CO2e estimate written on-chain for every shipment when delivery is confirmed (t × km × DEFRA 2025 freighting-goods factor)
+- a carrier green score (emissions intensity + attested route matches)
+- an optional USDC green bonus that pays out only when the attested route matches the declared mode within +10% distance
+
+Arc Testnet: [`0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569`](https://explorer.testnet.arc.io/address/0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569). There is a read-only **Green Lane** tab in the app.
+
+- Design, architecture diagram, demo txs: [docs/GREEN_LANE.md](docs/GREEN_LANE.md)
+- Methodology and factor sources: [docs/CLIMATE_IMPACT.md](docs/CLIMATE_IMPACT.md)
+- Security and data integrity: [docs/SECURITY_GREENLANE.md](docs/SECURITY_GREENLANE.md)
+
 ## Why
 
 Small carriers in road freight are typically paid 30 to 90 days after
