@@ -16,7 +16,7 @@ matching the verified source.
 
 - Studio project: https://studio.arc.io/app/3c83a2a7-fed9-4d26-af88-ce8adde0ea6f
 - The contract (`contracts/CargoBill.sol`), the 81 Foundry tests and the React app were written in Studio. The Studio AI agent updated the app to match the current contract. The repo starts from Studio's export (commit `3a5698d` "Initial commit from Studio").
-- Studio one-click testnet deploy: [`0x4b009f1d98d45736f379a1140e1b2b8a15808dd1`](https://explorer.testnet.arc.io/address/0x4b009f1d98d45736f379a1140e1b2b8a15808dd1)
+- Studio one-click testnet deploy (v3, uses Arc USDC `0x3600...0000`): [`0x88fdd48417545a87e87d281866b3aded600b87ce`](https://explorer.testnet.arc.io/address/0x88fdd48417545a87e87d281866b3aded600b87ce), tx [`0x917df712…`](https://explorer.testnet.arc.io/tx/0x917df712ce024861599d4a06156f1bc60582ec57ac0b5d9c109411a877dbb92a). An earlier Studio deploy (`0x4b009f1d98d45736f379a1140e1b2b8a15808dd1`) pointed at a placeholder USDC address and is superseded.
 - Studio doesn't deploy to mainnet, so the same contract went to Arc mainnet (chain 5042) with Foundry: [`0xc63caf75a63b53Cf0d30f599766824223ecb653E`](https://explorer.arc.io/address/0xc63caf75a63b53Cf0d30f599766824223ecb653E), using native USDC `0x3600000000000000000000000000000000000000`.
 - Walkthrough video: https://github.com/SmtDcs/haulwise/releases/download/arc-studio-demo/haulwise-arcstudio.mp4
 
