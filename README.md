@@ -61,7 +61,7 @@ matching the verified source.
 - a carrier green score (emissions intensity + attested route matches)
 - an optional USDC green bonus that pays out only when the attested route matches the declared mode within +10% distance
 
-Arc Testnet: [`0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569`](https://explorer.testnet.arc.io/address/0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569). There is a read-only **Green Lane** tab in the app.
+Arc Testnet: [`0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569`](https://explorer.testnet.arc.io/address/0xc84b618f6a2cc37c1c5daa60e9314d8dfcdf2569). There is a read-only **Green Lane** tab in the app. Demo video (3:15): https://github.com/SmtDcs/haulwise/releases/download/greenlane-demo/haulwise-greenlane-demo.mp4
 
 - Design, architecture diagram, demo txs: [docs/GREEN_LANE.md](docs/GREEN_LANE.md)
 - Methodology and factor sources: [docs/CLIMATE_IMPACT.md](docs/CLIMATE_IMPACT.md)
